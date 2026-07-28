@@ -1044,6 +1044,60 @@ class Os extends MY_Controller
             ->set_output(json_encode(['result' => false, 'messages', 'Ocorreu um erro ao tentar adiciona desconto a OS.']));
     }
 
+    public function atualizarStatusEmMassa()
+    {
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eOs')) {
+            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para editar O.S.']);
+            exit();
+        }
+
+        $ids = $this->input->post('ids');
+        $status = $this->input->post('status');
+
+        if (empty($ids) || ! is_array($ids) || empty($status)) {
+            echo json_encode(['result' => false, 'message' => 'Nenhuma OS selecionada ou status inválido.']);
+            exit();
+        }
+
+        $updated = 0;
+        $skipped = [];
+
+        foreach ($ids as $id) {
+            $os = $this->os_model->getById($id);
+            if (! $os) {
+                continue;
+            }
+
+            $oldStatus = $os->status;
+
+            if (! $this->os_model->isEditable($id)) {
+                $skipped[] = "OS #{$id} ({$oldStatus})";
+                continue;
+            }
+
+            if (strtolower($status) == 'cancelado' && strtolower($oldStatus) != 'cancelado') {
+                $this->devolucaoEstoque($id);
+            }
+
+            if (strtolower($oldStatus) == 'cancelado' && strtolower($status) != 'cancelado') {
+                $this->debitarEstoque($id);
+            }
+
+            $this->os_model->edit('os', ['status' => $status], 'idOs', $id);
+            $updated++;
+        }
+
+        log_info("Alterou status em massa: {$updated} OS para {$status}");
+
+        $message = "{$updated} OS alteradas para \"{$status}\".";
+        if (! empty($skipped)) {
+            $message .= " Puladas: " . implode(', ', $skipped);
+        }
+
+        echo json_encode(['result' => true, 'updated' => $updated, 'skipped' => $skipped, 'message' => $message]);
+        exit();
+    }
+
     public function faturar()
     {
         if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eOs')) {

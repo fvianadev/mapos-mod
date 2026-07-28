@@ -54,12 +54,34 @@
         </form>
     </div>
 
+    <div class="row" style="margin: 10px 0 5px">
+        <div class="span3">
+            <select id="bulk-status" class="span12">
+                <option value="">— Status em massa —</option>
+                <option value="Aberto">Aberto</option>
+                <option value="Em Andamento">Em Andamento</option>
+                <option value="Orçamento">Orçamento</option>
+                <option value="Negociação">Negociação</option>
+                <option value="Aguardando Peças">Aguardando Peças</option>
+                <option value="Aprovado">Aprovado</option>
+                <option value="Finalizado">Finalizado</option>
+                <option value="Cancelado">Cancelado</option>
+            </select>
+        </div>
+        <div class="span1">
+            <button id="btn-bulk-status" class="button btn btn-mini btn-primary" disabled>
+                <i class='bx bx-check-double'></i> Aplicar
+            </button>
+        </div>
+    </div>
+
     <div class="widget-box" style="margin-top: 8px">
         <div class="widget-content nopadding">
             <div class="table-responsive">
                 <table class="table table-bordered ">
                     <thead>
                         <tr>
+                            <th style="width:20px; text-align:center"><input type="checkbox" id="check-all"></th>
                             <th>N°</th>
                             <th>Cliente</th>
                             <th class="ph1">Responsável</th>
@@ -71,7 +93,7 @@
                             <th>Valor com Desconto</th>
                             <th class="ph4">V.T (Faturado)</th>
                             <th>Status</th>
-                            <th>Ações</th>
+                            <th style="white-space:nowrap">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -150,6 +172,8 @@ foreach ($results as $r) {
     }
 
     echo '<tr>';
+    $editavel = $this->os_model->isEditable($r->idOs);
+    echo '<td style="text-align:center; padding:2px"><input type="checkbox" class="bulk-item" value="' . $r->idOs . '"' . ($editavel ? '' : ' disabled') . '></td>';
     echo '<td>' . $r->idOs . '</td>';
     echo '<td class="cli1"><a href="' . base_url() . 'index.php/clientes/visualizar/' . $r->idClientes . '" style="margin-right: 1%">' . $r->nomeCliente . '</a></td>';
     echo '<td class="ph1">' . $r->nome . '</td>';
@@ -162,8 +186,6 @@ foreach ($results as $r) {
     echo '<td class="ph4">R$ ' . number_format($r->faturado ? floatval($r->valor_desconto) : 0.00, 2, ',', '.') . '</td>';
     echo '<td><span class="badge" style="background-color: ' . $cor . '; border-color: ' . $cor . '">' . $r->status . '</span> </td>';
     echo '<td>';
-
-    $editavel = $this->os_model->isEditable($r->idOs);
 
     if ($this->permission->checkPermission($this->session->userdata('permissao'), 'vOs')) {
         echo '<a style="margin-right: 1%" href="' . base_url() . 'index.php/os/visualizar/' . $r->idOs . '" class="btn-nwe" title="Ver mais detalhes"><i class="bx bx-show"></i></a>';
@@ -239,6 +261,70 @@ foreach ($results as $r) {
         });
         $(".datepicker").datepicker({
             dateFormat: 'dd/mm/yy'
+        });
+
+        $('#check-all').on('click', function() {
+            $('.bulk-item:not(:disabled)').prop('checked', this.checked);
+            toggleBulkButton();
+        });
+
+        $(document).on('change', '.bulk-item', function() {
+            toggleBulkButton();
+        });
+
+        function toggleBulkButton() {
+            var checked = $('.bulk-item:checked').length;
+            var hasStatus = $('#bulk-status').val() !== '';
+            $('#btn-bulk-status').prop('disabled', !(checked > 0 && hasStatus));
+        }
+
+        $('#bulk-status').on('change', toggleBulkButton);
+
+        $('#btn-bulk-status').on('click', function() {
+            var ids = [];
+            $('.bulk-item:checked').each(function() {
+                ids.push($(this).val());
+            });
+            var status = $('#bulk-status').val();
+
+            if (ids.length === 0 || !status) return;
+
+            Swal.fire({
+                title: 'Alterar status em massa?',
+                text: ids.length + ' OS serão alteradas para "' + status + '"',
+                type: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sim, alterar!',
+                cancelButtonText: 'Cancelar'
+            }).then(function(result) {
+                if (result.value) {
+                    $.ajax({
+                        url: '<?= site_url('os/atualizarStatusEmMassa') ?>',
+                        type: 'POST',
+                        data: { ids: ids, status: status },
+                        dataType: 'json',
+                        success: function(data) {
+                            if (data.result) {
+                                Swal.fire({
+                                    type: 'success',
+                                    title: 'Sucesso',
+                                    text: data.message
+                                }).then(function() {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire({
+                                    type: 'error',
+                                    title: 'Erro',
+                                    text: data.message
+                                });
+                            }
+                        }
+                    });
+                }
+            });
         });
     });
 </script>
