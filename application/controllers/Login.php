@@ -10,7 +10,74 @@ class Login extends CI_Controller
 
     public function index()
     {
+        if ($this->mapos_model->count('usuarios') == 0) {
+            redirect('login/firstAccess');
+        }
+
         $this->load->view('mapos/login');
+    }
+
+    public function firstAccess()
+    {
+        if ($this->mapos_model->count('usuarios') > 0) {
+            redirect('login');
+        }
+
+        if ($this->input->post()) {
+            $this->load->library('form_validation');
+
+            $this->form_validation->set_rules('nome', 'Nome', 'required|trim');
+            $this->form_validation->set_rules('email', 'Email', 'required|trim|valid_email|is_unique[usuarios.email]');
+            $this->form_validation->set_rules('senha', 'Senha', 'required|trim|min_length[6]');
+            $this->form_validation->set_rules('senha2', 'Confirmar Senha', 'required|trim|matches[senha]');
+
+            if ($this->form_validation->run() == false) {
+                $json = ['result' => false, 'message' => validation_errors()];
+                echo json_encode($json);
+                exit();
+            }
+
+            $data = [
+                'nome' => $this->input->post('nome'),
+                'email' => $this->input->post('email'),
+                'senha' => password_hash($this->input->post('senha'), PASSWORD_DEFAULT),
+                'telefone' => '(00) 0000-0000',
+                'cpf' => '000.000.000-00',
+                'cep' => '00000-000',
+                'rua' => '',
+                'numero' => '',
+                'bairro' => '',
+                'cidade' => '',
+                'estado' => '',
+                'situacao' => 1,
+                'permissoes_id' => 1,
+                'dataCadastro' => date('Y-m-d'),
+                'dataExpiracao' => '2030-01-01',
+            ];
+
+            if ($this->mapos_model->add('usuarios', $data)) {
+                $user = $this->mapos_model->check_credentials($this->input->post('email'));
+                $session_admin_data = [
+                    'nome_admin' => $user->nome,
+                    'email_admin' => $user->email,
+                    'id_admin' => $user->idUsuarios,
+                    'permissao' => $user->permissoes_id,
+                    'logado' => true,
+                ];
+                $this->session->set_userdata($session_admin_data);
+                log_info('Primeiro acesso - usuário admin criado');
+
+                $json = ['result' => true];
+                echo json_encode($json);
+                exit();
+            }
+
+            $json = ['result' => false, 'message' => 'Erro ao criar usuário.'];
+            echo json_encode($json);
+            exit();
+        }
+
+        $this->load->view('mapos/firstAccess');
     }
 
     public function sair()
