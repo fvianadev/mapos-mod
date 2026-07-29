@@ -1059,19 +1059,31 @@ class Os extends MY_Controller
             exit();
         }
 
+        if (strtolower($status) === 'faturado') {
+            echo json_encode(['result' => false, 'message' => 'Para faturar, selecione "Faturado" no fluxo de faturamento.']);
+            exit();
+        }
+
+        $this->load->model('mapos_model');
+        $this->load->model('usuarios_model');
+        $emitente = $this->mapos_model->getEmitente();
+
+        $this->db->trans_start();
+
         $updated = 0;
         $skipped = [];
 
         foreach ($ids as $id) {
             $os = $this->os_model->getById($id);
             if (! $os) {
+                $skipped[] = "OS #{$id} (não encontrada)";
                 continue;
             }
 
             $oldStatus = $os->status;
 
             if (! $this->os_model->isEditable($id)) {
-                $skipped[] = "OS #{$id} ({$oldStatus})";
+                $skipped[] = "OS #{$id} ({$oldStatus} — não editável)";
                 continue;
             }
 
@@ -1085,16 +1097,160 @@ class Os extends MY_Controller
 
             $this->os_model->edit('os', ['status' => $status], 'idOs', $id);
             $updated++;
+
+            if ($this->data['configuration']['os_notification'] != 'nenhum' && $this->data['configuration']['email_automatico'] == 1) {
+                $os = $this->os_model->getById($id);
+                $tecnico = $this->usuarios_model->getById($os->usuarios_id);
+                $remetentes = [];
+                switch ($this->data['configuration']['os_notification']) {
+                    case 'todos':
+                        array_push($remetentes, $os->email);
+                        array_push($remetentes, $tecnico->email);
+                        array_push($remetentes, $emitente->email);
+                        break;
+                    case 'cliente':
+                        array_push($remetentes, $os->email);
+                        break;
+                    case 'tecnico':
+                        array_push($remetentes, $tecnico->email);
+                        break;
+                    case 'emitente':
+                        array_push($remetentes, $emitente->email);
+                        break;
+                    default:
+                        array_push($remetentes, $os->email);
+                        break;
+                }
+                $this->enviarOsPorEmail($id, $remetentes, 'Ordem de Serviço - Status Alterado');
+            }
+        }
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === false) {
+            echo json_encode(['result' => false, 'message' => 'Erro ao alterar status em massa. Operação revertida.']);
+            exit();
         }
 
         log_info("Alterou status em massa: {$updated} OS para {$status}");
 
-        $message = "{$updated} OS alteradas para \"{$status}\".";
+        $message = "{$updated} OS alterada(s) para \"{$status}\".";
         if (! empty($skipped)) {
-            $message .= " Puladas: " . implode(', ', $skipped);
+            $message .= " Pulada(s): " . implode(', ', $skipped);
         }
 
         echo json_encode(['result' => true, 'updated' => $updated, 'skipped' => $skipped, 'message' => $message]);
+        exit();
+    }
+
+    public function faturarEmMassa()
+    {
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eOs')) {
+            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para editar O.S.']);
+            exit();
+        }
+
+        $ids = $this->input->post('ids');
+        $vencimento = $this->input->post('vencimento');
+        $recebimento = $this->input->post('recebimento');
+        $recebido = $this->input->post('recebido') ?: 0;
+        $formaPgto = $this->input->post('formaPgto');
+
+        if (empty($ids) || ! is_array($ids) || empty($vencimento)) {
+            echo json_encode(['result' => false, 'message' => 'Nenhuma OS selecionada ou data de entrada obrigatória.']);
+            exit();
+        }
+
+        try {
+            $vencimento = DateTime::createFromFormat('d/m/Y', $vencimento)->format('Y-m-d');
+            if ($recebimento != null && $recebimento !== '') {
+                $recebimento = DateTime::createFromFormat('d/m/Y', $recebimento)->format('Y-m-d');
+            } else {
+                $recebimento = null;
+            }
+        } catch (Exception $e) {
+            $vencimento = date('Y-m-d');
+        }
+
+        $this->load->model('usuarios_model');
+        $this->load->model('mapos_model');
+
+        $this->db->trans_start();
+
+        $faturados = 0;
+        $skipped = [];
+
+        foreach ($ids as $id) {
+            $os = $this->os_model->getById($id);
+            if (! $os) {
+                $skipped[] = "OS #{$id} (não encontrada)";
+                continue;
+            }
+
+            $lancamentoData = [
+                'descricao' => "Fatura de OS Nº: {$id}",
+                'clientes_id' => $os->clientes_id,
+                'data_vencimento' => $vencimento,
+                'data_pagamento' => $recebimento,
+                'baixado' => $recebido ? 1 : 0,
+                'cliente_fornecedor' => $os->nomeCliente,
+                'forma_pgto' => $recebido ? $formaPgto : null,
+                'tipo' => 'receita',
+                'usuarios_id' => $this->session->userdata('id_admin'),
+            ];
+
+            $result = $this->os_model->faturarOs($id, $lancamentoData);
+
+            if ($result['success']) {
+                $faturados++;
+                log_info('Faturou OS em massa. ID: ' . $id);
+
+                if ($this->data['configuration']['os_notification'] != 'nenhum' && $this->data['configuration']['email_automatico'] == 1) {
+                    $os = $this->os_model->getById($id);
+                    $tecnico = $this->usuarios_model->getById($os->usuarios_id);
+                    $emitente = $this->mapos_model->getEmitente();
+                    $remetentes = [];
+                    switch ($this->data['configuration']['os_notification']) {
+                        case 'todos':
+                            array_push($remetentes, $os->email);
+                            array_push($remetentes, $tecnico->email);
+                            array_push($remetentes, $emitente->email);
+                            break;
+                        case 'cliente':
+                            array_push($remetentes, $os->email);
+                            break;
+                        case 'tecnico':
+                            array_push($remetentes, $tecnico->email);
+                            break;
+                        case 'emitente':
+                            array_push($remetentes, $emitente->email);
+                            break;
+                        default:
+                            array_push($remetentes, $os->email);
+                            break;
+                    }
+                    $this->enviarOsPorEmail($id, $remetentes, 'Ordem de Serviço - Faturada');
+                }
+            } else {
+                $skipped[] = "OS #{$id} ({$result['message']})";
+            }
+        }
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === false) {
+            echo json_encode(['result' => false, 'message' => 'Erro ao faturar em massa. Operação revertida.']);
+            exit();
+        }
+
+        log_info("Faturou em massa: {$faturados} OS");
+
+        $message = "{$faturados} OS faturada(s) com sucesso.";
+        if (! empty($skipped)) {
+            $message .= " Pulada(s): " . implode(', ', $skipped);
+        }
+
+        echo json_encode(['result' => true, 'updated' => $faturados, 'skipped' => $skipped, 'message' => $message]);
         exit();
     }
 
@@ -1124,21 +1280,9 @@ class Os extends MY_Controller
             }
 
             $os_id = $this->input->post('os_id');
-            $valorTotalData = $this->os_model->valorTotalOS($os_id);
 
-            $valorTotalServico = $valorTotalData['totalServico'];
-            $valorTotalProduto = $valorTotalData['totalProdutos'];
-            $valorDesconto = $valorTotalData['valor_desconto'];
-
-            $valorTotal = $valorTotalServico + $valorTotalProduto;
-            $valorTotalComDesconto = $valorTotal - $valorDesconto;
-
-            $data = [
+            $lancamentoData = [
                 'descricao' => set_value('descricao'),
-                'valor' => $valorTotal,
-                'tipo_desconto' => 'real',
-                'desconto' => ($valorDesconto > 0) ? $valorTotalComDesconto : 0,
-                'valor_desconto' => ($valorDesconto > 0) ? $valorDesconto : $valorTotal,
                 'clientes_id' => $this->input->post('clientes_id'),
                 'data_vencimento' => $vencimento,
                 'data_pagamento' => $recebimento,
@@ -1152,45 +1296,16 @@ class Os extends MY_Controller
 
             $this->db->trans_start();
 
-            $editavel = $this->os_model->isEditable($os_id);
-            if (!$editavel) {
-                $this->db->trans_rollback();
-                return $this->output
-                    ->set_content_type('application/json')
-                    ->set_status_header(400)
-                    ->set_output(json_encode(['result' => false]));
-            }
+            $result = $this->os_model->faturarOs($os_id, $lancamentoData);
 
-            if ($this->os_model->add('lancamentos', $data)) {
-                $this->db->set('faturado', 1);
-                $this->db->set('valorTotal', $valorTotal);
+            $this->db->trans_complete();
 
-                if ($valorDesconto > 0) {
-                    $this->db->set('desconto', $valorTotalComDesconto);
-                    $this->db->set('valor_desconto', $valorDesconto);
-                } else {
-                    $this->db->set('desconto', 0);
-                    $this->db->set('valor_desconto', $valorTotal);
-                }
-
-                $this->db->set('status', 'Faturado');
-                $this->db->where('idOs', $os_id);
-                $this->db->update('os');
-
+            if ($result['success'] && $this->db->trans_status() !== false) {
                 log_info('Faturou uma OS. ID: ' . $os_id);
-
-                $this->db->trans_complete();
-
-                if ($this->db->trans_status() === false) {
-                    $this->session->set_flashdata('error', 'Ocorreu um erro ao tentar faturar OS.');
-                    $json = ['result' => false];
-                } else {
-                    $this->session->set_flashdata('success', 'OS faturada com sucesso!');
-                    $json = ['result' => true];
-                }
+                $this->session->set_flashdata('success', 'OS faturada com sucesso!');
+                $json = ['result' => true];
             } else {
-                $this->db->trans_rollback();
-                $this->session->set_flashdata('error', 'Ocorreu um erro ao tentar faturar OS.');
+                $this->session->set_flashdata('error', $result['message'] ?? 'Ocorreu um erro ao tentar faturar OS.');
                 $json = ['result' => false];
             }
 

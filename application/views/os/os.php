@@ -6,6 +6,13 @@
   select {
     width: 70px;
   }
+  #data2 {
+    margin-left: 4px;
+  }
+  .bulk-item:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 </style>
 <div class="new122">
     <div class="widget-title" style="margin: -20px 0 0">
@@ -65,12 +72,14 @@
                 <option value="Aguardando Peças">Aguardando Peças</option>
                 <option value="Aprovado">Aprovado</option>
                 <option value="Finalizado">Finalizado</option>
+                <option value="Faturado">Faturado</option>
                 <option value="Cancelado">Cancelado</option>
             </select>
         </div>
-        <div class="span1">
-            <button id="btn-bulk-status" class="button btn btn-mini btn-primary" disabled>
-                <i class='bx bx-check-double'></i> Aplicar
+        <div class="span2">
+            <button id="btn-bulk-status" class="button btn btn-mini btn-primary" disabled style="min-width: 120px">
+                <span class="button__icon"><i class='bx bx-check-double'></i></span>
+                <span class="button__text2">Aplicar</span>
             </button>
         </div>
     </div>
@@ -171,9 +180,13 @@ foreach ($results as $r) {
         $corGarantia = '';
     }
 
-    echo '<tr>';
     $editavel = $this->os_model->isEditable($r->idOs);
-    echo '<td style="text-align:center; padding:2px"><input type="checkbox" class="bulk-item" value="' . $r->idOs . '"' . ($editavel ? '' : ' disabled') . '></td>';
+
+    $checkboxDisabled = $editavel ? '' : ' disabled';
+    $titleAttr = $editavel ? '' : ' title="OS não editável"';
+
+    echo '<tr>';
+    echo '<td style="text-align:center; padding:2px"><input type="checkbox" class="bulk-item" value="' . $r->idOs . '"' . $checkboxDisabled . $titleAttr . '></td>';
     echo '<td>' . $r->idOs . '</td>';
     echo '<td class="cli1"><a href="' . base_url() . 'index.php/clientes/visualizar/' . $r->idClientes . '" style="margin-right: 1%">' . $r->nomeCliente . '</a></td>';
     echo '<td class="ph1">' . $r->nome . '</td>';
@@ -226,6 +239,60 @@ foreach ($results as $r) {
                 <button class="button btn btn-danger"><span class="button__icon"><i class='bx bx-trash'></i></span> <span class="button__text2">Excluir</span></button>
             </div>
         </form>
+    </div>
+</div>
+
+<div id="modal-faturar-massa" class="modal hide fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title">Faturar OS em Massa</h4>
+            </div>
+            <div class="modal-body">
+                <div class="span12 alert alert-info" style="margin-left: 0">
+                    OS selecionadas: <strong id="qtd-os-faturar">0</strong>
+                </div>
+                <div class="span12" style="margin-left: 0">
+                    <div class="span6" style="margin-left: 0">
+                        <label for="fm-vencimento">Data Entrada *</label>
+                        <input class="span12 datepicker" autocomplete="off" id="fm-vencimento" type="text" name="fm-vencimento" value="<?= date('d/m/Y') ?>" />
+                    </div>
+                </div>
+                <div class="span12" style="margin-left: 0">
+                    <div class="span6" style="margin-left: 0">
+                        <label for="fm-recebido">Foi Recebido?</label>
+                        &nbsp;&nbsp;<input id="fm-recebido" type="checkbox" name="fm-recebido" value="1" />
+                    </div>
+                </div>
+                <div id="fm-divRecebimento" class="span12" style="margin-left: 0; display: none;">
+                    <div class="span6" style="margin-left: 0">
+                        <label for="fm-recebimento">Data Recebimento</label>
+                        <input class="span12 datepicker" autocomplete="off" id="fm-recebimento" type="text" name="fm-recebimento" value="<?= date('d/m/Y') ?>" />
+                    </div>
+                    <div class="span6">
+                        <label for="fm-formaPgto">Forma Pgto *</label>
+                        <select name="fm-formaPgto" id="fm-formaPgto" class="span12">
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Cartão de Crédito">Cartão de Crédito</option>
+                            <option value="Cartão de Débito">Cartão de Débito</option>
+                            <option value="Boleto">Boleto</option>
+                            <option value="Depósito">Depósito</option>
+                            <option value="Pix">Pix</option>
+                            <option value="Cheque">Cheque</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display:flex;justify-content: center">
+                <button class="button btn btn-warning" data-dismiss="modal" aria-hidden="true" id="btn-cancelar-faturar-massa">
+                    <span class="button__icon"><i class="bx bx-x"></i></span><span class="button__text2">Cancelar</span>
+                </button>
+                <button class="button btn btn-danger" id="btn-confirmar-faturar-massa">
+                    <span class="button__icon"><i class="bx bx-dollar"></i></span><span class="button__text2">Faturar</span>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -289,6 +356,12 @@ foreach ($results as $r) {
 
             if (ids.length === 0 || !status) return;
 
+            if (status === 'Faturado') {
+                $('#qtd-os-faturar').text(ids.length);
+                $('#modal-faturar-massa').modal('show');
+                return;
+            }
+
             Swal.fire({
                 title: 'Alterar status em massa?',
                 text: ids.length + ' OS serão alteradas para "' + status + '"',
@@ -322,6 +395,83 @@ foreach ($results as $r) {
                                 });
                             }
                         }
+                    });
+                }
+            });
+        });
+
+        $('#fm-recebido').on('change', function() {
+            if (this.checked) {
+                $('#fm-divRecebimento').slideDown();
+            } else {
+                $('#fm-divRecebimento').slideUp();
+            }
+        });
+
+        $('#btn-cancelar-faturar-massa').on('click', function() {
+            $('#modal-faturar-massa').modal('hide');
+        });
+
+        $('#btn-confirmar-faturar-massa').on('click', function() {
+            var vencimento = $('#fm-vencimento').val();
+            if (!vencimento) {
+                Swal.fire({ type: 'warning', title: 'Atenção', text: 'Data de entrada é obrigatória.' });
+                return;
+            }
+
+            var recebido = $('#fm-recebido').is(':checked') ? 1 : 0;
+            var recebimento = null;
+            var formaPgto = null;
+
+            if (recebido) {
+                recebimento = $('#fm-recebimento').val();
+                formaPgto = $('#fm-formaPgto').val();
+                if (!recebimento || !formaPgto) {
+                    Swal.fire({ type: 'warning', title: 'Atenção', text: 'Preencha data de recebimento e forma de pagamento.' });
+                    return;
+                }
+            }
+
+            var ids = [];
+            $('.bulk-item:checked').each(function() {
+                ids.push($(this).val());
+            });
+
+            $.ajax({
+                url: '<?= site_url('os/faturarEmMassa') ?>',
+                type: 'POST',
+                data: {
+                    ids: ids,
+                    vencimento: vencimento,
+                    recebido: recebido,
+                    recebimento: recebimento,
+                    formaPgto: formaPgto
+                },
+                dataType: 'json',
+                success: function(data) {
+                    $('#modal-faturar-massa').modal('hide');
+                    if (data.result) {
+                        Swal.fire({
+                            type: 'success',
+                            title: 'Sucesso',
+                            text: data.message
+                        }).then(function() {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            type: 'error',
+                            title: 'Erro',
+                            text: data.message
+                        });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $('#modal-faturar-massa').modal('hide');
+                    Swal.fire({
+                        type: 'error',
+                        title: 'Erro HTTP',
+                        text: 'Status: ' + status + ' - ' + error + '\nResponse: ' + xhr.responseText.substring(0, 200)
                     });
                 }
             });

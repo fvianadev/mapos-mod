@@ -43,6 +43,14 @@ if (! function_exists('getMoneyAsCents')) {
 if (! function_exists('getCobrancaTransactionStatus')) {
     function getCobrancaTransactionStatus($paymentGatewaysConfig, $paymentGateway, $status)
     {
+        if (!isset($paymentGatewaysConfig[$paymentGateway])) {
+            return 'Gateway desconhecido (' . $paymentGateway . ')';
+        }
+
+        if (!isset($paymentGatewaysConfig[$paymentGateway]['transaction_status'][$status])) {
+            return 'Status desconhecido (' . $status . ')';
+        }
+
         return $paymentGatewaysConfig[$paymentGateway]['transaction_status'][$status];
     }
 }

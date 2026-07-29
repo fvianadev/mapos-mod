@@ -372,4 +372,55 @@ class Os_model extends CI_Model
 
         return $pix->getQRCode();
     }
+
+    public function faturarOs($osId, $lancamentoData)
+    {
+        if (! $this->isEditable($osId)) {
+            return ['success' => false, 'message' => 'OS não editável'];
+        }
+
+        $os = $this->getById($osId);
+        if (! $os) {
+            return ['success' => false, 'message' => 'OS não encontrada'];
+        }
+
+        $totals = $this->valorTotalOS($osId);
+        $valorTotalServico = $totals['totalServico'];
+        $valorTotalProduto = $totals['totalProdutos'];
+        $valorDesconto = $totals['valor_desconto'];
+        $valorTotal = $valorTotalServico + $valorTotalProduto;
+        $valorTotalComDesconto = $valorTotal - $valorDesconto;
+
+        if ($valorTotal <= 0) {
+            return ['success' => false, 'message' => 'OS sem produtos ou serviços'];
+        }
+
+        $lancamentoData['descricao'] = $lancamentoData['descricao'] ?? "Fatura de OS Nº: {$osId}";
+        $lancamentoData['valor'] = $valorTotal;
+        $lancamentoData['tipo_desconto'] = 'real';
+        $lancamentoData['desconto'] = ($valorDesconto > 0) ? $valorTotalComDesconto : 0;
+        $lancamentoData['valor_desconto'] = ($valorDesconto > 0) ? $valorDesconto : $valorTotal;
+
+        if (! $this->add('lancamentos', $lancamentoData)) {
+            return ['success' => false, 'message' => 'Erro ao criar lançamento'];
+        }
+
+        $osUpdate = [
+            'faturado' => 1,
+            'valorTotal' => $valorTotal,
+            'status' => 'Faturado',
+        ];
+
+        if ($valorDesconto > 0) {
+            $osUpdate['desconto'] = $valorTotalComDesconto;
+            $osUpdate['valor_desconto'] = $valorDesconto;
+        } else {
+            $osUpdate['desconto'] = 0;
+            $osUpdate['valor_desconto'] = $valorTotal;
+        }
+
+        $this->edit('os', $osUpdate, 'idOs', $osId);
+
+        return ['success' => true, 'valorTotal' => $valorTotal];
+    }
 }
