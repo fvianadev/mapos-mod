@@ -76,7 +76,7 @@
                 echo '<td><span class="label label-success">Cliente</span></td>';
             }
 
-            echo '<td>';
+            echo '<td style="white-space:nowrap">';
             if ($this->permission->checkPermission($this->session->userdata('permissao'), 'vCliente')) {
                 echo '<a href="' . base_url() . 'index.php/clientes/visualizar/' . $r->idClientes . '" style="margin-right: 1%" class="btn-nwe" title="Ver mais detalhes"><i class="bx bx-show bx-xs"></i></a>';
                 echo '<a href="' . base_url() . 'index.php/mine?e=' . $r->email . '" target="new" style="margin-right: 1%" class="btn-nwe2" title="Área do cliente"><i class="bx bx-key bx-xs"></i></a>';
