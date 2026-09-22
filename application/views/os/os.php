@@ -24,19 +24,26 @@
     <div class="span12" style="margin-left: 0">
         <form method="get" action="<?php echo base_url(); ?>index.php/os/gerenciar">
             <?php if ($this->permission->checkPermission($this->session->userdata('permissao'), 'aOs')) { ?>
-                <div class="span3">
-                    <a href="<?php echo base_url(); ?>index.php/os/adicionar" class="button btn btn-mini btn-success" style="max-width: 160px">
-                        <span class="button__icon"><i class='bx bx-plus-circle'></i></span><span class="button__text2">Ordem de Serviço</span></a>
-                </div>
+            <div class="span2">
+                <a href="<?php echo base_url(); ?>index.php/os/adicionar" class="button btn btn-mini btn-success" style="max-width: 160px">
+                    <span class="button__icon"><i class='bx bx-plus-circle'></i></span><span class="button__text2">Ordem de Serviço</span></a>
+            </div>
             <?php
             } ?>
 
-            <div class="span3">
-                <input type="text" name="pesquisa" id="pesquisa" placeholder="Nome do cliente a pesquisar" class="span12" value="<?=set_value('pesquisa')?>">
+            <div class="span1">
+                <button class="button btn btn-mini btn-warning" style="min-width: 70px">
+                    <span class="button__icon"><i class='bx bx-search-alt'></i></span>
+                    <span class="button__text2">Filtrar</span>
+                </button>
+            </div>
+
+            <div class="span2">
+                <input type="text" name="pesquisa" id="pesquisa" placeholder="Nome do cliente" class="span12" value="<?=set_value('pesquisa')?>">
             </div>
             <div class="span2">
                 <select name="status" id="" class="span12">
-                    <option value="">Selecione status</option>
+                    <option value="">Status</option>
                     <option value="Aberto" <?=$this->input->get('status') == 'Aberto' ? 'selected' : ''?>>Aberto</option>
                     <option value="Faturado" <?=$this->input->get('status') == 'Faturado' ? 'selected' : ''?>>Faturado</option>
                     <option value="Negociação" <?=$this->input->get('status') == 'Negociação' ? 'selected' : ''?>>Negociação</option>
@@ -44,19 +51,17 @@
                     <option value="Orçamento" <?=$this->input->get('status') == 'Orçamento' ? 'selected' : ''?>>Orçamento</option>
                     <option value="Finalizado" <?=$this->input->get('status') == 'Finalizado' ? 'selected' : ''?>>Finalizado</option>
                     <option value="Cancelado" <?=$this->input->get('status') == 'Cancelado' ? 'selected' : ''?>>Cancelado</option>
-                    <option value="Aguardando Peças" <?=$this->input->get('status') == 'Aguardando Peças' ? 'selected' : ''?>>Aguardando Peças</option>
+                    <option value="Aguardando Peças" <?=$this->input->get('status') == 'Aguardando Peças' ? 'selected' : ''?>>Aguard. Peças</option>
                     <option value="Aprovado" <?=$this->input->get('status') == 'Aprovado' ? 'selected' : ''?>>Aprovado</option>
                 </select>
 
             </div>
 
-            <div class="span3">
-                <input type="text" name="data" autocomplete="off" id="data" placeholder="Data Inicial" class="span6 datepicker" value="<?=$this->input->get('data')?>">
-                <input type="text" name="data2" autocomplete="off" id="data2" placeholder="Data Final" class="span6 datepicker" value="<?=$this->input->get('data2')?>">
+            <div class="span2">
+                <input type="text" name="data" autocomplete="off" id="data" placeholder="Data Inicial" class="span12 datepicker" value="<?=$this->input->get('data')?>">
             </div>
-            <div class="span1">
-                <button class="button btn btn-mini btn-warning" style="min-width: 30px">
-                    <span class="button__icon"><i class='bx bx-search-alt'></i></span></button>
+            <div class="span2">
+                <input type="text" name="data2" autocomplete="off" id="data2" placeholder="Data Final" class="span12 datepicker" value="<?=$this->input->get('data2')?>">
             </div>
         </form>
     </div>
@@ -330,6 +335,14 @@ foreach ($results as $r) {
             dateFormat: 'dd/mm/yy'
         });
 
+        var statusFiltro = new URLSearchParams(window.location.search).get('status') || '';
+        var temFiltro = statusFiltro !== '';
+
+        if (!temFiltro) {
+            $('#check-all').prop('disabled', true)
+                           .attr('title', 'Filtre por um status para usar seleção em massa');
+        }
+
         $('#check-all').on('click', function() {
             $('.bulk-item:not(:disabled)').prop('checked', this.checked);
             toggleBulkButton();
@@ -376,7 +389,7 @@ foreach ($results as $r) {
                     $.ajax({
                         url: '<?= site_url('os/atualizarStatusEmMassa') ?>',
                         type: 'POST',
-                        data: { ids: ids, status: status },
+                        data: { ids: ids, status: status, filtroStatus: statusFiltro },
                         dataType: 'json',
                         success: function(data) {
                             if (data.result) {

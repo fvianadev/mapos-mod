@@ -1053,14 +1053,16 @@ class Os extends MY_Controller
 
         $ids = $this->input->post('ids');
         $status = $this->input->post('status');
+        $filtroStatus = $this->input->post('filtroStatus');
 
         if (empty($ids) || ! is_array($ids) || empty($status)) {
             echo json_encode(['result' => false, 'message' => 'Nenhuma OS selecionada ou status inválido.']);
             exit();
         }
 
-        if (strtolower($status) === 'faturado') {
-            echo json_encode(['result' => false, 'message' => 'Para faturar, selecione "Faturado" no fluxo de faturamento.']);
+        $allowedStatus = ['Aberto', 'Em Andamento', 'Orçamento', 'Negociação', 'Aguardando Peças', 'Aprovado', 'Finalizado', 'Cancelado'];
+        if (! in_array($status, $allowedStatus)) {
+            echo json_encode(['result' => false, 'message' => 'Status inválido.']);
             exit();
         }
 
@@ -1072,6 +1074,7 @@ class Os extends MY_Controller
 
         $updated = 0;
         $skipped = [];
+        $enviarEmailIds = [];
 
         foreach ($ids as $id) {
             $os = $this->os_model->getById($id);
@@ -1087,6 +1090,16 @@ class Os extends MY_Controller
                 continue;
             }
 
+            if (! empty($filtroStatus) && $oldStatus !== $filtroStatus) {
+                $skipped[] = "OS #{$id} ({$oldStatus} — não confere com filtro)";
+                continue;
+            }
+
+            if (strtolower($oldStatus) === 'faturado') {
+                $skipped[] = "OS #{$id} (Faturado — não pode ser alterado em massa)";
+                continue;
+            }
+
             if (strtolower($status) == 'cancelado' && strtolower($oldStatus) != 'cancelado') {
                 $this->devolucaoEstoque($id);
             }
@@ -1097,8 +1110,18 @@ class Os extends MY_Controller
 
             $this->os_model->edit('os', ['status' => $status], 'idOs', $id);
             $updated++;
+            $enviarEmailIds[] = $id;
+        }
 
-            if ($this->data['configuration']['os_notification'] != 'nenhum' && $this->data['configuration']['email_automatico'] == 1) {
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === false) {
+            echo json_encode(['result' => false, 'message' => 'Erro ao alterar status em massa. Operação revertida.']);
+            exit();
+        }
+
+        if ($this->data['configuration']['os_notification'] != 'nenhum' && $this->data['configuration']['email_automatico'] == 1) {
+            foreach ($enviarEmailIds as $id) {
                 $os = $this->os_model->getById($id);
                 $tecnico = $this->usuarios_model->getById($os->usuarios_id);
                 $remetentes = [];
@@ -1123,13 +1146,6 @@ class Os extends MY_Controller
                 }
                 $this->enviarOsPorEmail($id, $remetentes, 'Ordem de Serviço - Status Alterado');
             }
-        }
-
-        $this->db->trans_complete();
-
-        if ($this->db->trans_status() === false) {
-            echo json_encode(['result' => false, 'message' => 'Erro ao alterar status em massa. Operação revertida.']);
-            exit();
         }
 
         log_info("Alterou status em massa: {$updated} OS para {$status}");
@@ -1179,6 +1195,7 @@ class Os extends MY_Controller
 
         $faturados = 0;
         $skipped = [];
+        $enviarEmailIds = [];
 
         foreach ($ids as $id) {
             $os = $this->os_model->getById($id);
@@ -1204,33 +1221,7 @@ class Os extends MY_Controller
             if ($result['success']) {
                 $faturados++;
                 log_info('Faturou OS em massa. ID: ' . $id);
-
-                if ($this->data['configuration']['os_notification'] != 'nenhum' && $this->data['configuration']['email_automatico'] == 1) {
-                    $os = $this->os_model->getById($id);
-                    $tecnico = $this->usuarios_model->getById($os->usuarios_id);
-                    $emitente = $this->mapos_model->getEmitente();
-                    $remetentes = [];
-                    switch ($this->data['configuration']['os_notification']) {
-                        case 'todos':
-                            array_push($remetentes, $os->email);
-                            array_push($remetentes, $tecnico->email);
-                            array_push($remetentes, $emitente->email);
-                            break;
-                        case 'cliente':
-                            array_push($remetentes, $os->email);
-                            break;
-                        case 'tecnico':
-                            array_push($remetentes, $tecnico->email);
-                            break;
-                        case 'emitente':
-                            array_push($remetentes, $emitente->email);
-                            break;
-                        default:
-                            array_push($remetentes, $os->email);
-                            break;
-                    }
-                    $this->enviarOsPorEmail($id, $remetentes, 'Ordem de Serviço - Faturada');
-                }
+                $enviarEmailIds[] = $id;
             } else {
                 $skipped[] = "OS #{$id} ({$result['message']})";
             }
@@ -1241,6 +1232,35 @@ class Os extends MY_Controller
         if ($this->db->trans_status() === false) {
             echo json_encode(['result' => false, 'message' => 'Erro ao faturar em massa. Operação revertida.']);
             exit();
+        }
+
+        if ($this->data['configuration']['os_notification'] != 'nenhum' && $this->data['configuration']['email_automatico'] == 1) {
+            $emitente = $this->mapos_model->getEmitente();
+            foreach ($enviarEmailIds as $id) {
+                $os = $this->os_model->getById($id);
+                $tecnico = $this->usuarios_model->getById($os->usuarios_id);
+                $remetentes = [];
+                switch ($this->data['configuration']['os_notification']) {
+                    case 'todos':
+                        array_push($remetentes, $os->email);
+                        array_push($remetentes, $tecnico->email);
+                        array_push($remetentes, $emitente->email);
+                        break;
+                    case 'cliente':
+                        array_push($remetentes, $os->email);
+                        break;
+                    case 'tecnico':
+                        array_push($remetentes, $tecnico->email);
+                        break;
+                    case 'emitente':
+                        array_push($remetentes, $emitente->email);
+                        break;
+                    default:
+                        array_push($remetentes, $os->email);
+                        break;
+                }
+                $this->enviarOsPorEmail($id, $remetentes, 'Ordem de Serviço - Faturada');
+            }
         }
 
         log_info("Faturou em massa: {$faturados} OS");

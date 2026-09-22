@@ -644,6 +644,182 @@ class Vendas extends MY_Controller
         echo json_encode($json);
     }
 
+    public function atualizarStatusEmMassa()
+    {
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')) {
+            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para editar Vendas.']);
+            exit();
+        }
+
+        $ids = $this->input->post('ids');
+        $status = $this->input->post('status');
+        $filtroStatus = $this->input->post('filtroStatus');
+
+        if (empty($ids) || ! is_array($ids) || empty($status)) {
+            echo json_encode(['result' => false, 'message' => 'Nenhuma venda selecionada ou status inválido.']);
+            exit();
+        }
+
+        $allowedStatus = ['Aberto', 'Em Andamento', 'Orçamento', 'Negociação', 'Aguardando Peças', 'Aprovado', 'Finalizado', 'Cancelado'];
+        if (! in_array($status, $allowedStatus)) {
+            echo json_encode(['result' => false, 'message' => 'Status inválido.']);
+            exit();
+        }
+
+        $this->db->trans_start();
+
+        $updated = 0;
+        $skipped = [];
+
+        foreach ($ids as $id) {
+            $venda = $this->vendas_model->getById($id);
+            if (! $venda) {
+                $skipped[] = "Venda #{$id} (não encontrada)";
+                continue;
+            }
+
+            $oldStatus = $venda->status;
+
+            if (! $this->vendas_model->isEditable($id)) {
+                $skipped[] = "Venda #{$id} ({$oldStatus} — não editável)";
+                continue;
+            }
+
+            if (! empty($filtroStatus) && $oldStatus !== $filtroStatus) {
+                $skipped[] = "Venda #{$id} ({$oldStatus} — não confere com filtro)";
+                continue;
+            }
+
+            if (strtolower($oldStatus) === 'faturado') {
+                $skipped[] = "Venda #{$id} (Faturado — não pode ser alterado em massa)";
+                continue;
+            }
+
+            $this->vendas_model->edit('vendas', ['status' => $status], 'idVendas', $id);
+            $updated++;
+        }
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === false) {
+            echo json_encode(['result' => false, 'message' => 'Erro ao alterar status em massa. Operação revertida.']);
+            exit();
+        }
+
+        log_info("Alterou status em massa (vendas): {$updated} vendas para {$status}");
+
+        $message = "{$updated} venda(s) alterada(s) para \"{$status}\".";
+        if (! empty($skipped)) {
+            $message .= " Pulada(s): " . implode(', ', $skipped);
+        }
+
+        echo json_encode(['result' => true, 'updated' => $updated, 'skipped' => $skipped, 'message' => $message]);
+        exit();
+    }
+
+    public function faturarEmMassa()
+    {
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')) {
+            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para editar Vendas.']);
+            exit();
+        }
+
+        $ids = $this->input->post('ids');
+        $vencimento = $this->input->post('vencimento');
+        $recebimento = $this->input->post('recebimento');
+        $recebido = $this->input->post('recebido') ?: 0;
+        $formaPgto = $this->input->post('formaPgto');
+
+        if (empty($ids) || ! is_array($ids) || empty($vencimento)) {
+            echo json_encode(['result' => false, 'message' => 'Nenhuma venda selecionada ou data de entrada obrigatória.']);
+            exit();
+        }
+
+        try {
+            $vencimento = DateTime::createFromFormat('d/m/Y', $vencimento)->format('Y-m-d');
+            if ($recebimento != null && $recebimento !== '') {
+                $recebimento = DateTime::createFromFormat('d/m/Y', $recebimento)->format('Y-m-d');
+            } else {
+                $recebimento = null;
+            }
+        } catch (Exception $e) {
+            $vencimento = date('Y-m-d');
+        }
+
+        $this->load->model('mapos_model');
+        $emitente = $this->mapos_model->getEmitente();
+
+        $this->db->trans_start();
+
+        $faturados = 0;
+        $skipped = [];
+
+        foreach ($ids as $id) {
+            $venda = $this->vendas_model->getById($id);
+            if (! $venda) {
+                $skipped[] = "Venda #{$id} (não encontrada)";
+                continue;
+            }
+
+            if (! $this->vendas_model->isEditable($id)) {
+                $skipped[] = "Venda #{$id} (já faturada — não editável)";
+                continue;
+            }
+
+            $valorTotal = floatval($venda->valor_desconto) > 0 ? floatval($venda->valor_desconto) : floatval($venda->valorTotal);
+
+            $lancamentoData = [
+                'descricao' => "Fatura de Venda Nº: {$id}",
+                'clientes_id' => $venda->idClientes,
+                'data_vencimento' => $vencimento,
+                'data_pagamento' => $recebimento,
+                'baixado' => $recebido ? 1 : 0,
+                'cliente_fornecedor' => $venda->nomeCliente,
+                'forma_pgto' => $recebido ? $formaPgto : null,
+                'tipo' => 'receita',
+                'usuarios_id' => $this->session->userdata('id_admin'),
+                'valor' => $valorTotal,
+                'desconto' => $venda->desconto,
+                'tipo_desconto' => 'real',
+                'valor_desconto' => $valorTotal,
+            ];
+
+            $this->db->insert('lancamentos', $lancamentoData);
+            $idLancamento = $this->db->insert_id();
+
+            if ($idLancamento) {
+                $this->db->set('faturado', 1);
+                $this->db->set('valorTotal', $valorTotal);
+                $this->db->set('lancamentos_id', $idLancamento);
+                $this->db->set('status', 'Faturado');
+                $this->db->where('idVendas', $id);
+                $this->db->update('vendas');
+
+                $faturados++;
+                log_info('Faturou venda em massa. ID: ' . $id);
+            } else {
+                $skipped[] = "Venda #{$id} (erro ao criar lançamento)";
+            }
+        }
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === false) {
+            echo json_encode(['result' => false, 'message' => 'Erro ao faturar em massa. Operação revertida.']);
+            exit();
+        }
+
+        log_info("Faturou vendas em massa: {$faturados} vendas");
+
+        $message = "{$faturados} venda(s) faturada(s) com sucesso.";
+        if (! empty($skipped)) {
+            $message .= " Pulada(s): " . implode(', ', $skipped);
+        }
+
+        echo json_encode(['result' => true, 'updated' => $faturados, 'skipped' => $skipped, 'message' => $message]);
+        exit();
+    }
+
     public function validarCPF($cpf)
     {
         $cpf = preg_replace('/[^0-9]/', '', $cpf);
