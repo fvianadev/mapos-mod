@@ -569,13 +569,22 @@ class Financeiro extends MY_Controller
             exit();
         }
 
+        // Vendas vinculadas a este lançamento
+        $vendas = $this->db->get_where('vendas', ['lancamentos_id' => $id])->result();
+
         // Começa a transação
         $this->db->trans_start();
+
+        // Devolve ao estoque a baixa feita no faturamento dessas vendas
+        $this->load->model('vendas_model');
+        foreach ($vendas as $venda) {
+            $this->vendas_model->devolverEstoque($venda->idVendas);
+        }
 
         // Atualiza a tabela vendas, removendo o ID do lançamento e alterando o faturado e status
         $this->db->set('lancamentos_id', null);
         $this->db->set('faturado', 0);
-        $this->db->set('status', 'Finalizado');
+        $this->db->set('status', 'Aprovado');
         $this->db->where('lancamentos_id', $id);
         $this->db->update('vendas');
 

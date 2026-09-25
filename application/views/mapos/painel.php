@@ -943,32 +943,32 @@
                         <?php foreach ($vendasstatus as $v) : ?>
                             <?php
                                     switch ($v->status) {
+                                        case 'Orçamento':
+                                            $cor = '#f0ad4e';
+                                            break;
+                                        case 'Aprovado':
+                                            $cor = '#337ab7';
+                                            break;
+                                        case 'Faturado':
+                                            $cor = '#28a745';
+                                            break;
+                                        case 'Cancelado':
+                                            $cor = '#dc3545';
+                                            break;
                                         case 'Aberto':
                                             $cor = '#00cd00';
                                             break;
                                         case 'Em Andamento':
                                             $cor = '#436eee';
                                             break;
-                                        case 'Orçamento':
-                                            $cor = '#CDB380';
-                                            break;
                                         case 'Negociação':
                                             $cor = '#AEB404';
-                                            break;
-                                        case 'Cancelado':
-                                            $cor = '#CD0000';
                                             break;
                                         case 'Finalizado':
                                             $cor = '#256';
                                             break;
-                                        case 'Faturado':
-                                            $cor = '#B266FF';
-                                            break;
                                         case 'Aguardando Peças':
                                             $cor = '#FF7F00';
-                                            break;
-                                        case 'Aprovado':
-                                            $cor = '#808080';
                                             break;
                                         default:
                                             $cor = '#E0E4CC';

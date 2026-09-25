@@ -54,14 +54,9 @@
                                 <label for="">Status:</label>
                                 <select name="status" class="span12">
                                     <option value="">Todas (Todos os Status)</option>
-                                    <option value="Faturado">Faturado</option>
-                                    <option value="Aberto">Aberto</option>
-                                    <option value="Em Andamento">Em Andamento</option>
                                     <option value="Orçamento">Orçamento</option>
-                                    <option value="Negociação">Negociação</option>
-                                    <option value="Aguardando Peças">Aguardando Peças</option>
                                     <option value="Aprovado">Aprovado</option>
-                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="Faturado">Faturado</option>
                                     <option value="Cancelado">Cancelado</option>
                                 </select>
                             </div>

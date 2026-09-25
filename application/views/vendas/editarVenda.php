@@ -1,3 +1,24 @@
+<?php
+$subtotal = 0;
+foreach ($produtos as $p) {
+    $subtotal += $p->subTotal;
+}
+
+$descontoBruto = (float) $result->desconto;
+$descontoValor = $result->tipo_desconto === 'porcento' ? $subtotal * ($descontoBruto / 100) : $descontoBruto;
+$descontoValor = min($subtotal, $descontoValor);
+$totalLiquido = (float) $result->valor_desconto > 0 ? (float) $result->valor_desconto : $subtotal - $descontoValor;
+
+$statusAtual = $result->status;
+$faturada = (int) $result->faturado === 1;
+$statusSelecionado = $faturada && ! in_array($statusAtual, ['Faturado', 'Cancelado'], true) ? 'Faturado' : $statusAtual;
+
+$opcoesStatus = ['Orçamento', 'Aprovado'];
+if ($faturada) {
+    $opcoesStatus[] = 'Faturado';
+}
+$opcoesStatus[] = 'Cancelado';
+?>
 <link rel="stylesheet" href="<?php echo base_url(); ?>assets/js/jquery-ui/css/smoothness/jquery-ui-1.9.2.custom.css" />
 <script type="text/javascript" src="<?php echo base_url() ?>assets/js/jquery-ui/js/jquery-ui-1.9.2.custom.js"></script>
 <script type="text/javascript" src="<?php echo base_url() ?>assets/js/jquery.validate.js"></script>
@@ -50,15 +71,9 @@
                                         <div class="span2">
                                             <label for="status">Status<span class="required">*</span></label>
                                             <select class="span12" name="status" id="status" value="">
-                                                <option <?= $result->status == 'Orçamento' ? 'selected' : '' ?> value="Orçamento">Orçamento</option>
-                                                <option <?= $result->status == 'Aberto' ? 'selected' : '' ?> value="Aberto">Aberto</option>
-                                                <option <?= $result->status == 'Faturado' ? 'selected' : '' ?> value="Faturado">Faturado</option>
-                                                <option <?= $result->status == 'Negociação' ? 'selected' : '' ?> value="Negociação">Negociação</option>
-                                                <option <?= $result->status == 'Em Andamento' ? 'selected' : '' ?> value="Em Andamento">Em Andamento</option>
-                                                <option <?= $result->status == 'Finalizado' ? 'selected' : '' ?> value="Finalizado">Finalizado</option>
-                                                <option <?= $result->status == 'Cancelado' ? 'selected' : '' ?> value="Cancelado">Cancelado</option>
-                                                <option <?= $result->status == 'Aguardando Peças' ? 'selected' : '' ?>value="Aguardando Peças">Aguardando Peças</option>
-                                                <option <?= $result->status == 'Aprovado' ? 'selected' : '' ?> value="Aprovado">Aprovado</option>
+                                                <?php foreach ($opcoesStatus as $opcao) { ?>
+                                                    <option <?= $statusSelecionado === $opcao ? 'selected' : '' ?> value="<?= html_escape($opcao) ?>"><?= html_escape($opcao) ?></option>
+                                                <?php } ?>
                                             </select>
                                         </div>
                                         <div class="span2">
@@ -67,6 +82,14 @@
                                                 class="span12" name="garantia"
                                                 value="<?php echo $result->garantia ?>" />
                                             <?php echo form_error('garantia'); ?>
+                                        </div>
+                                    </div>
+
+                                    <div class="span12" style="padding: 1%; margin-left: 0">
+                                        <div class="span12" style="margin-left: 0; background: #f5f7fa; border: 1px solid #dfe3e8; border-radius: 4px; padding: 12px 16px; display: flex; gap: 32px; flex-wrap: wrap; align-items: center;">
+                                            <div><strong>Subtotal:</strong> R$ <?php echo number_format($subtotal, 2, ',', '.'); ?></div>
+                                            <div><strong>Desconto:</strong> R$ <?php echo number_format($descontoValor, 2, ',', '.'); ?><?php echo $result->tipo_desconto === 'porcento' ? ' (' . number_format($descontoBruto, 2, ',', '.') . ' %)' : ''; ?></div>
+                                            <div><strong>Total Líquido a Faturar:</strong> R$ <?php echo number_format($totalLiquido, 2, ',', '.'); ?></div>
                                         </div>
                                     </div>
 
@@ -235,7 +258,7 @@ foreach ($produtos as $p) {
             <div class="span12 alert alert-info" style="margin-left: 0"> Obrigatório o preenchimento dos campos com asterisco.</div>
             <div class="span12" style="margin-left: 0">
                 <label for="descricao">Descrição</label>
-                <input class="span12" id="descricao" type="text" name="descricao" value="Fatura de Venda Nº: <?php echo $result->idVendas; ?> " />
+                <input class="span12" id="descricao" type="text" name="descricao" value="Fatura de Venda #<?php echo $result->idVendas; ?> - <?php echo html_escape($result->nomeCliente); ?>" />
             </div>
             <div class="span12" style="margin-left: 0">
                 <div class="span12" style="margin-left: 0">

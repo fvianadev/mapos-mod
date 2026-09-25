@@ -48,13 +48,7 @@
                                         <div class="span2">
                                             <label for="status">Status<span class="required">*</span></label>
                                             <select class="span12" name="status" id="status" value="">
-                                                <option value="Orçamento">Orçamento</option>
-                                                <option value="Aberto">Aberto</option>
-                                                <option value="Faturado">Faturado</option>
-                                                <option value="Em Andamento">Em Andamento</option>
-                                                <option value="Finalizado">Finalizado</option>
-                                                <option value="Cancelado">Cancelado</option>
-                                                <option value="Aguardando Peças">Aguardando Peças</option>
+                                                <option value="Orçamento" selected>Orçamento</option>
                                                 <option value="Aprovado">Aprovado</option>
                                             </select>
                                         </div>
@@ -76,6 +70,15 @@
                                             <h4>Observações ao Cliente</h4>
                                         </label>
                                         <textarea class="editor" name="observacoes_cliente" id="observacoes_cliente" cols="30" rows="5"></textarea>
+                                    </div>
+
+                                    <div class="span12" style="padding: 1%; margin-left: 0">
+                                        <div class="span12" style="margin-left: 0; background: #f5f7fa; border: 1px solid #dfe3e8; border-radius: 4px; padding: 12px 16px; display: flex; gap: 32px; flex-wrap: wrap; align-items: center;">
+                                            <div><strong>Subtotal:</strong> R$ 0,00</div>
+                                            <div><strong>Desconto:</strong> R$ 0,00</div>
+                                            <div><strong>Total Líquido a Faturar:</strong> R$ 0,00</div>
+                                            <span style="color: #777">Resumo financeiro calculado após adicionar os produtos.</span>
+                                        </div>
                                     </div>
 
                                     <div class="span12" style="padding: 1%; margin-left: 0">

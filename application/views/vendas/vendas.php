@@ -40,15 +40,10 @@
             <div class="span2">
                 <select name="status" class="span12">
                     <option value="">Status</option>
-                    <option value="Aberto">Aberto</option>
-                    <option value="Faturado">Faturado</option>
-                    <option value="Negociação">Negociação</option>
-                    <option value="Em Andamento">Em Andamento</option>
                     <option value="Orçamento">Orçamento</option>
-                    <option value="Finalizado">Finalizado</option>
-                    <option value="Cancelado">Cancelado</option>
-                    <option value="Aguardando Peças">Aguard. Peças</option>
                     <option value="Aprovado">Aprovado</option>
+                    <option value="Faturado">Faturado</option>
+                    <option value="Cancelado">Cancelado</option>
                 </select>
             </div>
             <div class="span2">
@@ -64,13 +59,8 @@
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <select id="bulk-status" style="margin: 0; width: 200px;">
                 <option value="">— Status em massa —</option>
-                <option value="Aberto">Aberto</option>
-                <option value="Em Andamento">Em Andamento</option>
                 <option value="Orçamento">Orçamento</option>
-                <option value="Negociação">Negociação</option>
-                <option value="Aguardando Peças">Aguardando Peças</option>
                 <option value="Aprovado">Aprovado</option>
-                <option value="Finalizado">Finalizado</option>
                 <option value="Faturado">Faturado</option>
                 <option value="Cancelado">Cancelado</option>
             </select>
@@ -127,15 +117,15 @@
 
             $faturado = ($r->faturado == 1) ? 'Sim' : 'Não';
             $corStatus = match($r->status) {
+                'Orçamento' => '#f0ad4e',
+                'Aprovado' => '#337ab7',
+                'Faturado' => '#28a745',
+                'Cancelado' => '#dc3545',
                 'Aberto' => '#00cd00',
                 'Em Andamento' => '#436eee',
-                'Orçamento' => '#CDB380',
                 'Negociação' => '#AEB404',
-                'Cancelado' => '#CD0000',
                 'Finalizado' => '#256',
-                'Faturado' => '#B266FF',
                 'Aguardando Peças' => '#FF7F00',
-                'Aprovado' => '#808080',
                 default => '#E0E4CC',
             };
 

@@ -147,6 +147,71 @@ class Vendas_model extends CI_Model
         return true;
     }
 
+    public function statusComerciais()
+    {
+        return ['Orçamento', 'Aprovado', 'Faturado', 'Cancelado'];
+    }
+
+    public function statusEhValido($status)
+    {
+        return in_array($status, $this->statusComerciais(), true);
+    }
+
+    public function devolverEstoque($idVendas)
+    {
+        if (! $this->data['configuration']['control_estoque']) {
+            return;
+        }
+
+        $this->load->model('produtos_model');
+
+        foreach ($this->getProdutos($idVendas) as $produto) {
+            $this->produtos_model->updateEstoque($produto->produtos_id, $produto->quantidade, '+');
+            log_info('ESTOQUE: Venda #' . $idVendas . ' devolveu o produto ' . $produto->produtos_id . '. Quantidade: ' . $produto->quantidade . '. Motivo: Estorno do faturamento.');
+        }
+    }
+
+    public function debitarEstoque($idVendas)
+    {
+        if (! $this->data['configuration']['control_estoque']) {
+            return;
+        }
+
+        $this->load->model('produtos_model');
+
+        foreach ($this->getProdutos($idVendas) as $produto) {
+            $this->produtos_model->updateEstoque($produto->produtos_id, $produto->quantidade, '-');
+            log_info('ESTOQUE: Venda #' . $idVendas . ' baixou o produto ' . $produto->produtos_id . '. Quantidade: ' . $produto->quantidade . '. Motivo: Faturamento da venda.');
+        }
+    }
+
+    public function estornarFaturamento($idVendas)
+    {
+        $venda = $this->getById($idVendas);
+
+        if (! $venda || (int) $venda->faturado !== 1) {
+            return false;
+        }
+
+        // Desvincula a receita antes de excluí-la (FK vendas.lancamentos_id)
+        $this->db->where('idVendas', $idVendas);
+        $this->db->update('vendas', ['faturado' => 0, 'lancamentos_id' => null]);
+
+        if ($venda->lancamentos_id) {
+            $this->db->where('idLancamentos', $venda->lancamentos_id);
+        } else {
+            $this->db->where('vendas_id', $idVendas);
+            $this->db->where('tipo', 'receita');
+        }
+        $this->db->delete('lancamentos');
+
+        $this->devolverEstoque($idVendas);
+
+        log_info('Estornou o faturamento da venda. ID: ' . $idVendas);
+
+        return true;
+    }
+
     public function getByIdCobrancas($id)
     {
         $this->db->select('vendas.*, clientes.*, clientes.email as emailCliente, lancamentos.data_vencimento, usuarios.telefone as telefone_usuario, usuarios.email as email_usuario, usuarios.nome, usuarios.nome, cobrancas.vendas_id,cobrancas.idCobranca,cobrancas.status');

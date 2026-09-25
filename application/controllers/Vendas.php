@@ -92,6 +92,11 @@ class Vendas extends MY_Controller
                 $dataVenda = date('Y-m-d');
             }
 
+            $status = $this->input->post('status');
+            if (! in_array($status, ['Orçamento', 'Aprovado'], true)) {
+                $status = 'Orçamento';
+            }
+
             $data = [
                 'dataVenda' => $dataVenda,
                 'observacoes' => $this->input->post('observacoes'),
@@ -99,7 +104,7 @@ class Vendas extends MY_Controller
                 'clientes_id' => $this->input->post('clientes_id'),
                 'usuarios_id' => $this->input->post('usuarios_id'),
                 'faturado' => 0,
-                'status' => $this->input->post('status'),
+                'status' => $status,
                 'garantia' => $this->input->post('garantia')
             ];
 
@@ -144,31 +149,55 @@ class Vendas extends MY_Controller
         if ($this->form_validation->run('vendas') == false) {
             $this->data['custom_error'] = (validation_errors() ? '<div class="form_error">' . validation_errors() . '</div>' : false);
         } else {
-            $dataVenda = $this->input->post('dataVenda');
+            $idVenda = $this->input->post('idVendas');
+            $vendaAtual = $this->vendas_model->getById($idVenda);
+            $status = $this->input->post('status');
 
-            try {
-                $dataVenda = explode('/', $dataVenda);
-                $dataVenda = $dataVenda[2] . '-' . $dataVenda[1] . '-' . $dataVenda[0];
-            } catch (Exception $e) {
-                $dataVenda = date('Y/m/d');
-            }
-
-            $data = [
-                'dataVenda' => $dataVenda,
-                'observacoes' => $this->input->post('observacoes'),
-                'observacoes_cliente' => $this->input->post('observacoes_cliente'),
-                'usuarios_id' => $this->input->post('usuarios_id'),
-                'clientes_id' => $this->input->post('clientes_id'),
-                'status' => $this->input->post('status'),
-                'garantia' => $this->input->post('garantia')
-            ];
-
-            if ($this->vendas_model->edit('vendas', $data, 'idVendas', $this->input->post('idVendas')) == true) {
-                $this->session->set_flashdata('success', 'Venda editada com sucesso!');
-                log_info('Alterou uma venda. ID: ' . $this->input->post('idVendas'));
-                redirect(site_url('vendas/editar/') . $this->input->post('idVendas'));
+            if (! $vendaAtual) {
+                $this->data['custom_error'] = '<div class="form_error"><p>Venda não encontrada.</p></div>';
+            } elseif (! $this->vendas_model->statusEhValido($status)) {
+                $this->data['custom_error'] = '<div class="form_error"><p>Status inválido para vendas. Use: Orçamento, Aprovado, Faturado ou Cancelado.</p></div>';
+            } elseif ($status === 'Faturado' && (int) $vendaAtual->faturado !== 1) {
+                $this->data['custom_error'] = '<div class="form_error"><p>Use o botão "Faturar" para gerar a receita e concluir a venda.</p></div>';
+            } elseif ((int) $vendaAtual->faturado === 1 && ! in_array($status, ['Faturado', 'Cancelado'], true)) {
+                $this->data['custom_error'] = '<div class="form_error"><p>Venda já faturada: ela só pode permanecer Faturada ou ser Cancelada.</p></div>';
             } else {
-                $this->data['custom_error'] = '<div class="form_error"><p>Ocorreu um erro</p></div>';
+                $dataVenda = $this->input->post('dataVenda');
+
+                try {
+                    $dataVenda = explode('/', $dataVenda);
+                    $dataVenda = $dataVenda[2] . '-' . $dataVenda[1] . '-' . $dataVenda[0];
+                } catch (Exception $e) {
+                    $dataVenda = date('Y/m/d');
+                }
+
+                $data = [
+                    'dataVenda' => $dataVenda,
+                    'observacoes' => $this->input->post('observacoes'),
+                    'observacoes_cliente' => $this->input->post('observacoes_cliente'),
+                    'usuarios_id' => $this->input->post('usuarios_id'),
+                    'clientes_id' => $this->input->post('clientes_id'),
+                    'status' => $status,
+                    'garantia' => $this->input->post('garantia')
+                ];
+
+                $this->db->trans_start();
+
+                $editado = $this->vendas_model->edit('vendas', $data, 'idVendas', $idVenda);
+
+                if ($editado && $status === 'Cancelado' && $vendaAtual->status !== 'Cancelado') {
+                    $this->vendas_model->estornarFaturamento($idVenda);
+                }
+
+                $this->db->trans_complete();
+
+                if ($editado && $this->db->trans_status() !== false) {
+                    $this->session->set_flashdata('success', 'Venda editada com sucesso!');
+                    log_info('Alterou uma venda. ID: ' . $idVenda);
+                    redirect(site_url('vendas/editar/') . $idVenda);
+                } else {
+                    $this->data['custom_error'] = '<div class="form_error"><p>Ocorreu um erro</p></div>';
+                }
             }
         }
 
@@ -339,11 +368,12 @@ class Vendas extends MY_Controller
             }
         }
 
+        if ((int) $venda->faturado === 1) {
+            $this->vendas_model->estornarFaturamento($id);
+        }
+
         $this->vendas_model->delete('itens_de_vendas', 'vendas_id', $id);
         $this->vendas_model->delete('vendas', 'idVendas', $id);
-        if ((int) $venda->faturado === 1) {
-            $this->vendas_model->delete('lancamentos', 'descricao', "Fatura de Venda - #${id}");
-        }
 
         log_info('Removeu uma venda. ID: ' . $id);
 
@@ -388,7 +418,15 @@ class Vendas extends MY_Controller
         $this->form_validation->set_rules('idVendasProduto', 'Vendas', 'trim|required');
 
         $idVenda = $this->input->post('idVendasProduto');
+        $venda = $this->vendas_model->getById($idVenda);
         $editavel = $this->vendas_model->isEditable($idVenda);
+
+        if (! $venda) {
+            return $this->output
+                ->set_content_type('application/json')
+                ->set_status_header(422)
+                ->set_output(json_encode(['result' => false, 'messages' => '<br /><br /> <strong>Motivo:</strong> Venda não encontrada']));
+        }
         if (!$editavel) {
             return $this->output
                 ->set_content_type('application/json')
@@ -414,7 +452,8 @@ class Vendas extends MY_Controller
             if ($this->vendas_model->add('itens_de_vendas', $data) == true) {
                 $this->load->model('produtos_model');
 
-                if ($this->data['configuration']['control_estoque']) {
+                // O estoque só é movimentado a partir do faturamento (Receita).
+                if ($this->data['configuration']['control_estoque'] && (int) $venda->faturado === 1) {
                     $this->produtos_model->updateEstoque($produto, $quantidade, '-');
                 }
 
@@ -466,11 +505,14 @@ class Vendas extends MY_Controller
                 ->set_output(json_encode(['result' => false, 'messages' => '<br /><br /> <strong>Motivo:</strong> Venda já faturada']));
         }
 
+        $venda = $this->vendas_model->getById($idVendas);
+
         $this->db->trans_start();
 
         $this->vendas_model->delete('itens_de_vendas', 'idItens', $idProduto);
 
-        if ($this->data['configuration']['control_estoque']) {
+        // Devolve ao estoque apenas o que foi baixado no faturamento.
+        if ($this->data['configuration']['control_estoque'] && $venda && (int) $venda->faturado === 1) {
             $this->load->model('produtos_model');
             $this->produtos_model->updateEstoque($produto, $quantidade, '+');
         }
@@ -571,6 +613,26 @@ class Vendas extends MY_Controller
 
             $vendas = $this->vendas_model->getById($venda_id);
 
+            if (! $vendas) {
+                echo json_encode(['result' => false, 'message' => 'Venda não encontrada.']);
+                exit();
+            }
+
+            if ((int) $vendas->faturado === 1) {
+                echo json_encode(['result' => false, 'message' => 'Venda já faturada.']);
+                exit();
+            }
+
+            if ($vendas->status === 'Cancelado') {
+                echo json_encode(['result' => false, 'message' => 'Venda cancelada não pode ser faturada.']);
+                exit();
+            }
+
+            $descricao = set_value('descricao');
+            if ($descricao === '') {
+                $descricao = "Fatura de Venda #{$venda_id} - {$vendas->nomeCliente}";
+            }
+
             $valorTotal = getAmount($this->input->post('valor'));
             $tipoDesconto = $vendas->tipo_desconto;
             $valorDesconto = $vendas->desconto;
@@ -588,7 +650,7 @@ class Vendas extends MY_Controller
 
             $data = [
                 'vendas_id' => $venda_id,
-                'descricao' => set_value('descricao'),
+                'descricao' => $descricao,
                 'valor' => $valorTotal,
                 'desconto' => $vendas->desconto,
                 'tipo_desconto' => 'real',
@@ -617,6 +679,8 @@ class Vendas extends MY_Controller
                 $this->db->set('status', 'Faturado');
                 $this->db->where('idVendas', $venda_id);
                 $this->db->update('vendas');
+
+                $this->vendas_model->debitarEstoque($venda_id);
 
                 log_info('Faturou a venda com ID.' . $venda_id);
 
@@ -660,9 +724,14 @@ class Vendas extends MY_Controller
             exit();
         }
 
-        $allowedStatus = ['Aberto', 'Em Andamento', 'Orçamento', 'Negociação', 'Aguardando Peças', 'Aprovado', 'Finalizado', 'Cancelado'];
-        if (! in_array($status, $allowedStatus)) {
+        $allowedStatus = $this->vendas_model->statusComerciais();
+        if (! in_array($status, $allowedStatus, true)) {
             echo json_encode(['result' => false, 'message' => 'Status inválido.']);
+            exit();
+        }
+
+        if ($status === 'Faturado') {
+            echo json_encode(['result' => false, 'message' => 'Para faturar, selecione as vendas e use o faturamento em massa.']);
             exit();
         }
 
@@ -690,9 +759,13 @@ class Vendas extends MY_Controller
                 continue;
             }
 
-            if (strtolower($oldStatus) === 'faturado') {
-                $skipped[] = "Venda #{$id} (Faturado — não pode ser alterado em massa)";
+            if ((int) $venda->faturado === 1 && $status !== 'Cancelado') {
+                $skipped[] = "Venda #{$id} (Faturada — somente pode ser cancelada)";
                 continue;
+            }
+
+            if ($status === 'Cancelado' && $oldStatus !== 'Cancelado') {
+                $this->vendas_model->estornarFaturamento($id);
             }
 
             $this->vendas_model->edit('vendas', ['status' => $status], 'idVendas', $id);
@@ -766,10 +839,20 @@ class Vendas extends MY_Controller
                 continue;
             }
 
+            if ((int) $venda->faturado === 1) {
+                $skipped[] = "Venda #{$id} (já faturada)";
+                continue;
+            }
+
+            if ($venda->status === 'Cancelado') {
+                $skipped[] = "Venda #{$id} (cancelada — não pode ser faturada)";
+                continue;
+            }
+
             $valorTotal = floatval($venda->valor_desconto) > 0 ? floatval($venda->valor_desconto) : floatval($venda->valorTotal);
 
             $lancamentoData = [
-                'descricao' => "Fatura de Venda Nº: {$id}",
+                'descricao' => "Fatura de Venda #{$id} - {$venda->nomeCliente}",
                 'clientes_id' => $venda->idClientes,
                 'data_vencimento' => $vencimento,
                 'data_pagamento' => $recebimento,
@@ -794,6 +877,8 @@ class Vendas extends MY_Controller
                 $this->db->set('status', 'Faturado');
                 $this->db->where('idVendas', $id);
                 $this->db->update('vendas');
+
+                $this->vendas_model->debitarEstoque($id);
 
                 $faturados++;
                 log_info('Faturou venda em massa. ID: ' . $id);

@@ -13,7 +13,7 @@ class Mapos extends MY_Controller
     {
         $status = ['Em Andamento', 'Aguardando Peças'];
         $this->data['ordens_status'] = $this->mapos_model->getOsStatus($status);
-        $vstatus = ['Aberto', 'Em Andamento', 'Aguardando Peças', 'Aprovado', 'Orçamento'];
+        $vstatus = ['Orçamento', 'Aprovado'];
         $this->data['vendasstatus'] = $this->mapos_model->getVendasStatus($vstatus);
         $this->data['lancamentos'] = $this->mapos_model->getLancamentos();
         $this->data['ordens_orcamentos'] = $this->mapos_model->getOsOrcamentos();

@@ -429,11 +429,11 @@ class TestData extends Seeder
         $this->db->truncate('itens_de_vendas');
 
         $vendasData = [
-            ['cliente' => 2, 'status' => 'Finalizado'],
-            ['cliente' => 4, 'status' => 'Finalizado'],
-            ['cliente' => 1, 'status' => 'Finalizado'],
-            ['cliente' => 6, 'status' => 'Aberto'],
-            ['cliente' => 3, 'status' => 'Finalizado'],
+            ['cliente' => 2, 'status' => 'Faturado'],
+            ['cliente' => 4, 'status' => 'Faturado'],
+            ['cliente' => 1, 'status' => 'Aprovado'],
+            ['cliente' => 6, 'status' => 'Orçamento'],
+            ['cliente' => 3, 'status' => 'Cancelado'],
         ];
 
         foreach ($vendasData as $v) {
@@ -442,7 +442,7 @@ class TestData extends Seeder
                 'valorTotal' => $this->faker->randomFloat(2, 200, 3000),
                 'clientes_id' => $v['cliente'],
                 'usuarios_id' => 1,
-                'faturado' => $v['status'] === 'Finalizado' ? 1 : 0,
+                'faturado' => $v['status'] === 'Faturado' ? 1 : 0,
                 'status' => $v['status'],
                 'observacoes' => $this->faker->optional(0.5)->sentence(6),
             ]);

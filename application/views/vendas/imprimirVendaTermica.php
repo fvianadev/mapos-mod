@@ -128,7 +128,7 @@
                                         </td>
                                     </tr>
                                 </tbody>
-                                <?php if (in_array($result->status, ['Finalizado', 'Orçamento', 'Faturado', 'Aberto', 'Em Andamento', 'Aguardando Peças']) && $qrCode): ?>
+                                <?php if (in_array($result->status, ['Finalizado', 'Orçamento', 'Faturado', 'Aprovado', 'Aberto', 'Em Andamento', 'Aguardando Peças']) && $qrCode): ?>
                                     <tr>
                                         <td colspan="4" style="text-align: center;">
                                             <img style="margin: 12px 0 0 0;" src="<?= base_url(); ?>assets/img/logo_pix.png" width="64px" alt="QR Code de Pagamento" /><br>
