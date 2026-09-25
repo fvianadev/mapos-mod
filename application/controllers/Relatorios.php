@@ -895,10 +895,11 @@ class Relatorios extends MY_Controller
         $dataFinal = $this->input->get('dataFinal');
         $cliente = $this->input->get('cliente');
         $responsavel = $this->input->get('responsavel');
+        $status = $this->input->get('status');
         $format = $this->input->get('format');
 
         $isXls = $format === 'xls';
-        $vendas = $this->Relatorios_model->vendasCustom($dataInicial, $dataFinal, $cliente, $responsavel, $isXls);
+        $vendas = $this->Relatorios_model->vendasCustom($dataInicial, $dataFinal, $cliente, $responsavel, $status, $isXls);
         $totalVendas = 0;
         $totalDesconto = 0;
         $totalValorDesconto = 0;

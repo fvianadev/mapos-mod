@@ -50,11 +50,28 @@
                         </div>
 
                         <div class="span12 well" style="margin-left: 0">
-                            <label for="">Tipo de impressão:</label>
-                            <select name="format" class="span12">
-                                <option value="">PDF</option>
-                                <option value="xls">XLS</option>
-                            </select>
+                            <div class="span6">
+                                <label for="">Status:</label>
+                                <select name="status" class="span12">
+                                    <option value="">Todas (Todos os Status)</option>
+                                    <option value="Faturado">Faturado</option>
+                                    <option value="Aberto">Aberto</option>
+                                    <option value="Em Andamento">Em Andamento</option>
+                                    <option value="Orçamento">Orçamento</option>
+                                    <option value="Negociação">Negociação</option>
+                                    <option value="Aguardando Peças">Aguardando Peças</option>
+                                    <option value="Aprovado">Aprovado</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="Cancelado">Cancelado</option>
+                                </select>
+                            </div>
+                            <div class="span6">
+                                <label for="">Tipo de impressão:</label>
+                                <select name="format" class="span12">
+                                    <option value="">PDF</option>
+                                    <option value="xls">XLS</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="span12" style="display:flex;justify-content: center">
                             <button type="reset" class="button btn btn-warning">

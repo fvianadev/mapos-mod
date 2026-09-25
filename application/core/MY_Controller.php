@@ -54,6 +54,14 @@ class MY_Controller extends CI_Controller
         foreach ($configuracoes as $c) {
             $this->data['configuration'][$c->config] = $c->valor;
         }
+
+        if ($this->session->userdata('per_page')) {
+            $this->data['configuration']['per_page'] = (int) $this->session->userdata('per_page');
+        } else {
+            $this->data['configuration']['per_page'] = 20;
+        }
+
+        $this->data['configuration']['per_page'] = max(10, min(100, (int) $this->data['configuration']['per_page']));
     }
 
     public function layout()

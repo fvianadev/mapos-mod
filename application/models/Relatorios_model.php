@@ -383,7 +383,7 @@ class Relatorios_model extends CI_Model
         return $result->result();
     }
 
-    public function vendasCustom($dataInicial = null, $dataFinal = null, $cliente = null, $responsavel = null, $array = false)
+    public function vendasCustom($dataInicial = null, $dataFinal = null, $cliente = null, $responsavel = null, $status = null, $array = false)
     {
         $whereData = '';
         $whereCliente = '';
@@ -401,11 +401,14 @@ class Relatorios_model extends CI_Model
         if ($responsavel != null) {
             $whereResponsavel = 'AND usuarios_id = ' . $this->db->escape($responsavel);
         }
+        if ($status != null) {
+            $whereStatus = 'AND status = ' . $this->db->escape($status);
+        }
 
         $query = "SELECT vendas.*,clientes.nomeCliente, usuarios.nome FROM vendas
         LEFT JOIN clientes ON vendas.clientes_id = clientes.idClientes
         LEFT JOIN usuarios ON vendas.usuarios_id = usuarios.idUsuarios
-        WHERE idVendas != 0 $whereData $whereCliente $whereResponsavel ORDER BY vendas.idVendas";
+        WHERE idVendas != 0 $whereData $whereCliente $whereResponsavel $whereStatus ORDER BY vendas.idVendas";
 
         $result = $this->db->query($query);
         if ($array) {

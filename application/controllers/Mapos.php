@@ -638,4 +638,19 @@ class Mapos extends MY_Controller
         }
         return file_put_contents($env_file_path, $env_file) ? true : false;
     }
+
+    public function set_per_page()
+    {
+        $per_page = (int) $this->input->post('per_page');
+        if ($per_page >= 10 && $per_page <= 100) {
+            $this->session->set_userdata('per_page', $per_page);
+            return $this->output
+                ->set_content_type('application/json')
+                ->set_output(json_encode(['result' => true]));
+        }
+
+        return $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode(['result' => false]));
+    }
 }

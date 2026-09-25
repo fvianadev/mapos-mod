@@ -60,9 +60,9 @@
         </form>
     </div>
 
-    <div class="row" style="margin: 10px 0 5px">
-        <div class="span3">
-            <select id="bulk-status" class="span12">
+    <div class="row-fluid" style="margin: 10px 0 5px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <select id="bulk-status" style="margin: 0; width: 200px;">
                 <option value="">— Status em massa —</option>
                 <option value="Aberto">Aberto</option>
                 <option value="Em Andamento">Em Andamento</option>
@@ -74,13 +74,12 @@
                 <option value="Faturado">Faturado</option>
                 <option value="Cancelado">Cancelado</option>
             </select>
-        </div>
-        <div class="span2">
-            <button id="btn-bulk-status" class="button btn btn-mini btn-primary" disabled style="min-width: 120px">
+            <button id="btn-bulk-status" class="button btn btn-mini btn-primary" disabled style="min-width: 120px; margin: 0;">
                 <span class="button__icon"><i class='bx bx-check-double'></i></span>
-                <span class="button__text2">Aplicar</span>
+                <span class="button__text2">Alterar status em massa</span>
             </button>
         </div>
+        <div id="custom-search-container" style="display: flex; align-items: center; justify-content: flex-end; margin-left: auto;"></div>
     </div>
 
     <div class="widget-box">
