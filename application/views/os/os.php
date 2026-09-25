@@ -57,11 +57,9 @@
 
             </div>
 
-            <div class="span2">
-                <input type="text" name="data" autocomplete="off" id="data" placeholder="Data Inicial" class="span12 datepicker" value="<?=$this->input->get('data')?>">
-            </div>
-            <div class="span2">
-                <input type="text" name="data2" autocomplete="off" id="data2" placeholder="Data Final" class="span12 datepicker" value="<?=$this->input->get('data2')?>">
+            <div class="span3">
+                <input type="text" name="data" autocomplete="off" id="data" placeholder="Data Inicial" class="span6 datepicker" value="<?=html_escape($this->input->get('data'))?>">
+                <input type="text" name="data2" autocomplete="off" id="data2" placeholder="Data Final" class="span6 datepicker" value="<?=html_escape($this->input->get('data2'))?>">
             </div>
         </form>
     </div>
