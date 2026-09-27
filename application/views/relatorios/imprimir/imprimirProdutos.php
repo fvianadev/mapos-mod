@@ -6,11 +6,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/bootstrap-responsive.min.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/fullcalendar.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/main.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/blue.css" class="skin-color" />
+    <?php require __DIR__ . '/_estilosRelatorio.php'; ?>
 </head>
 
 <body style="background-color: transparent">
@@ -20,61 +16,66 @@
                 <div class="widget-box">
                     <?= $topo ?>
                     <div class="widget-title">
-                        <h4 style="text-align: center; font-size: 1.1em; padding: 5px;">
-                            <?= ucfirst($title) ?>
-                        </h4>
+                        <h4 class="rel-titulo"><?= html_escape(ucfirst($title)) ?></h4>
                     </div>
                     <div class="widget-content nopadding tab-content">
-                        <table class="table table-bordered">
+                        <table class="rel-table">
+                            <colgroup>
+                                <col style="width: 30%" />
+                                <col style="width: 6%" />
+                                <col style="width: 12%" />
+                                <col style="width: 12%" />
+                                <col style="width: 10%" />
+                                <col style="width: 15%" />
+                                <col style="width: 15%" />
+                            </colgroup>
                             <thead>
                                 <tr>
-                                    <th width="600" align="center" style="font-size: 15px">Nome</th>
-                                    <th width="100" align="center" style="font-size: 15px">UN</th>
-                                    <th width="130" align="center" style="font-size: 15px">Preço Compra</th>
-                                    <th width="130" align="center" style="font-size: 15px">Preço Venda</th>
-                                    <th width="145" align="center" style="font-size: 15px">Estoque</th>
-                                    <th width="145" align="center" style="font-size: 15px">Valor (Venda)</th>
-                                    <th width="145" align="center" style="font-size: 15px">Valor (Compra)</th>
+                                    <th>Nome</th>
+                                    <th>UN</th>
+                                    <th>Preço Compra</th>
+                                    <th>Preço Venda</th>
+                                    <th>Estoque</th>
+                                    <th>Valor (Venda)</th>
+                                    <th>Valor (Compra)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php
-                                    foreach ($produtos as $p) {
-                                        echo '<tr>';
-                                        echo '<td>' . $p->descricao . '</td>';
-                                        echo '<td align="center">' . $p->unidade . '</td>';
-                                        echo '<td align="center">R$: ' . $p->precoCompra . '</td>';
-                                        echo '<td align="center">R$: ' . $p->precoVenda . '</td>';
-                                        echo '<td align="center">' . $p->estoque . '</td>';
-                                        echo '<td align="center">R$: ' . number_format($p->valorEstoque, 2, ',', '.') . '</td>';
-                                        echo '<td align="center">R$: ' . number_format(floatval($p->estoque) * floatval($p->precoCompra), 2, ',', '.') . '</td>';
-                                        echo '</tr>';
-                                    }
-    ?>
-                                
-                 
-                                <tr>
-                                     <td colspan="6">&nbsp;</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="4"></td>
-                                    <td align="center"><b>Itens em Estoque</b></td>
-                                    <td align="center"><b>Valor do Estoque (Venda)</b></td>
-                                    <td align="center"><b>Valor do Estoque (Compra)</b></td> <!-- Nova coluna -->
-                                </tr>
-                                <tr style="background-color: gainsboro;">
-                                    <td colspan="4"></td>
-                                    <td align="center"><?= array_sum(array_column($produtos, 'estoque')) ?></td>
-                                    <td align="center">R$: <?= number_format(array_sum(array_column($produtos, 'valorEstoque')), 2, ',', '.'); ?></td>
-                                    <td align="center">R$: <?= number_format(array_sum(array_column($produtos, 'valorEstoqueR')), 2, ',', '.'); ?></td> <!-- Valor do Estoque (Compra) -->
-                                </tr>
+                                <?php if (empty($produtos)) : ?>
+                                    <tr>
+                                        <td colspan="7" class="rel-vazio">Nenhum produto no período informado.</td>
+                                    </tr>
+                                <?php endif ?>
+                                <?php foreach ($produtos as $p) : ?>
+                                    <tr>
+                                        <td><?= html_escape((string) $p->descricao) ?: '-' ?></td>
+                                        <td class="ctr"><?= html_escape((string) $p->unidade) ?: '-' ?></td>
+                                        <td class="num">R$ <?= number_format((float) $p->precoCompra, 2, ',', '.') ?></td>
+                                        <td class="num">R$ <?= number_format((float) $p->precoVenda, 2, ',', '.') ?></td>
+                                        <td class="ctr"><?= html_escape((string) $p->estoque) ?></td>
+                                        <td class="num">R$ <?= number_format((float) $p->valorEstoque, 2, ',', '.') ?></td>
+                                        <td class="num">R$ <?= number_format(((float) $p->estoque) * ((float) $p->precoCompra), 2, ',', '.') ?></td>
+                                    </tr>
+                                <?php endforeach ?>
                             </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4"></td>
+                                    <td class="ctr">Itens em Estoque</td>
+                                    <td class="ctr">Valor do Estoque (Venda)</td>
+                                    <td class="ctr">Valor do Estoque (Compra)</td>
+                                </tr>
+                                <tr class="rel-total">
+                                    <td colspan="4"></td>
+                                    <td class="ctr"><?= array_sum(array_column($produtos, 'estoque')) ?></td>
+                                    <td class="num">R$ <?= number_format(array_sum(array_column($produtos, 'valorEstoque')), 2, ',', '.') ?></td>
+                                    <td class="num">R$ <?= number_format(array_sum(array_column($produtos, 'valorEstoqueR')), 2, ',', '.') ?></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
-                <h5 style="text-align: right; font-size: 0.8em; padding: 5px;">
-                    Data do Relatório: <?php echo date('d/m/Y'); ?>
-                </h5>
+                <h5 class="rel-data">Data do Relatório: <?php echo date('d/m/Y'); ?></h5>
             </div>
         </div>
     </div>

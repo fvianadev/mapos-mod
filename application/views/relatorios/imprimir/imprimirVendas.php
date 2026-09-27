@@ -6,11 +6,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/bootstrap-responsive.min.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/fullcalendar.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/main.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/blue.css" class="skin-color" />
+    <?php require __DIR__ . '/_estilosRelatorio.php'; ?>
 </head>
 
 <body style="background-color: transparent">
@@ -20,56 +16,70 @@
                 <div class="widget-box">
                     <?= $topo ?>
                     <div class="widget-title">
-                        <h4 style="text-align: center; font-size: 1.1em; padding: 5px;">
-                            <?= ucfirst($title) ?>
-                        </h4>
+                        <h4 class="rel-titulo"><?= html_escape(ucfirst($title)) ?></h4>
                     </div>
                     <div class="widget_content nopadding">
-                        <table width="100%" class="table table-bordered">
+                        <?php
+                        $sum = 0;
+                        foreach ($vendas as $v) {
+                            $sum += $v->valor_desconto != 0 ? $v->valor_desconto : $v->valorTotal;
+                        }
+                        ?>
+                        <table class="rel-table">
+                            <colgroup>
+                                <col style="width: 6%" />
+                                <col style="width: 34%" />
+                                <col style="width: 13%" />
+                                <col style="width: 9%" />
+                                <col style="width: 10%" />
+                                <col style="width: 10%" />
+                                <col style="width: 10%" />
+                                <col style="width: 8%" />
+                            </colgroup>
                             <thead>
                                 <tr>
-                                    <th width="110" align="center" style="font-size: 15px">#</th>
-                                    <th width="500" align="center" style="font-size: 15px">Cliente</th>
-                                    <th width="150" align="center" style="font-size: 15px">Vendedor</th>
-                                    <th width="140" align="center" style="font-size: 15px">Data</th>
-                                    <th width="140" align="center" style="font-size: 15px">Total</th>
-                                    <th width="140" align="center" style="font-size: 15px">Desconto</th>
-                                    <th width="140" align="center" style="font-size: 15px">Total Com Desconto</th>
+                                    <th>#</th>
+                                    <th>Cliente</th>
+                                    <th>Vendedor</th>
+                                    <th>Status</th>
+                                    <th>Data</th>
+                                    <th>Total</th>
+                                    <th>Desconto</th>
+                                    <th>Total Com Desconto</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php
-                                foreach ($vendas as $v) {
-                                    echo '<tr>';
-                                    echo '<td align="center">' . $v->idVendas . '</td>';
-                                    echo '<td>' . $v->nomeCliente . '</td>';
-                                    echo '<td align="center">' . $v->nome . '</td>';
-                                    echo '<td align="center">' . date('d/m/Y', strtotime($v->dataVenda)) . '</td>';
-                                    echo '<td align="center">R$: ' . number_format($v->valorTotal, 2, ',', '.') . '</td>';
-                                    echo '<td align="center">' . ($v->tipo_desconto == "real" ? "R$ " : "") . $v->desconto ." ". ($v->tipo_desconto == "porcento" ? " %" : "") . '</td>';
-                                    echo '<td align="center">R$: ' . number_format($v->valor_desconto != 0 ? $v->valor_desconto : $v->valorTotal, 2, ',', '.') . '</td>';
-                                    echo '</tr>';
-                                }
-    ?>
-                                <tr>
-                                    <td colspan="5"></td>
-                                    <td align="right"><b>TOTAL: </b></td>
-                                    <td align="center"><b>R$:
-                                            <?php
-                $sum = 0;
-    foreach ($vendas as $valorTotal => $value) {
-        $sum += $value->valor_desconto != 0 ? $value->valor_desconto : $value->valorTotal;
-    }
-    echo number_format($sum, 2, ',', '.');
-    ?></b></td>
-                                </tr>
+                                <?php if (empty($vendas)) : ?>
+                                    <tr>
+                                        <td colspan="8" class="rel-vazio">Nenhuma venda no período informado.</td>
+                                    </tr>
+                                <?php endif ?>
+                                <?php foreach ($vendas as $v) :
+                                    $tsData = strtotime((string) $v->dataVenda);
+                                    ?>
+                                    <tr>
+                                        <td class="ctr"><?= (int) $v->idVendas ?></td>
+                                        <td><?= html_escape((string) $v->nomeCliente) ?: '-' ?></td>
+                                        <td class="ctr"><?= html_escape((string) $v->nome) ?: '-' ?></td>
+                                        <td class="ctr"><?= html_escape((string) $v->status) ?: '-' ?></td>
+                                        <td class="ctr"><?= $tsData ? date('d/m/Y', $tsData) : '-' ?></td>
+                                        <td class="num">R$ <?= number_format((float) $v->valorTotal, 2, ',', '.') ?></td>
+                                        <td class="num"><?= ($v->tipo_desconto == 'real' ? 'R$ ' : '') . number_format((float) $v->desconto, 2, ',', '.') . ($v->tipo_desconto == 'porcento' ? ' %' : '') ?></td>
+                                        <td class="num">R$ <?= number_format($v->valor_desconto != 0 ? (float) $v->valor_desconto : (float) $v->valorTotal, 2, ',', '.') ?></td>
+                                    </tr>
+                                <?php endforeach ?>
                             </tbody>
+                            <tfoot>
+                                <tr class="rel-total">
+                                    <td colspan="6"></td>
+                                    <td class="num">TOTAL:</td>
+                                    <td class="num">R$ <?= number_format($sum, 2, ',', '.') ?></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
-                <h5 style="text-align: right; font-size: 0.8em; padding: 5px;">
-                    Data do Relatório: <?php echo date('d/m/Y'); ?>
-                </h5>
+                <h5 class="rel-data">Data do Relatório: <?php echo date('d/m/Y'); ?></h5>
             </div>
         </div>
     </div>

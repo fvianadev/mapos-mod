@@ -235,7 +235,8 @@ footer .vendedor {
 @media print {
     html, body {
         width: 210mm;
-        height: 297mm;       
+        height: 297mm;
+        background: #fff !important;
     }
     .main-page {
         margin: 0;
@@ -246,6 +247,19 @@ footer .vendedor {
         box-shadow: initial;
         background: initial;
         page-break-after: always;
+    }
+
+    /* Sem fundo cinza na impressão (economia de tinta): só o corpo
+       com branco, mantendo bordas e tipografia. */
+    section .title,
+    section .subtitle {
+        background-color: #fff !important;
+    }
+
+    .table-secondary,
+    .table-secondary > * {
+        --bs-table-bg: #fff !important;
+        background-color: #fff !important;
     }
 
     .via{

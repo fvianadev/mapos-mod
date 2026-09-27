@@ -6,11 +6,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/bootstrap-responsive.min.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/fullcalendar.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/main.css" />
-    <link rel="stylesheet" href="<?php echo base_url(); ?>assets/css/blue.css" class="skin-color" />
+    <?php require __DIR__ . '/_estilosRelatorio.php'; ?>
 </head>
 
 <body style="background-color: transparent">
@@ -20,48 +16,64 @@
                 <div class="widget-box">
                     <?= $topo ?>
                     <div class="widget-title">
-                        <h4 style="text-align: center">Produtos</h4>
+                        <h4 class="rel-titulo"><?= html_escape(isset($title) ? $title : 'Relatório SKU') ?></h4>
                     </div>
                     <div class="widget-content nopadding tab-content">
-                        <table class="table table-bordered">
+                        <table class="rel-table">
+                            <colgroup>
+                                <col style="width: 7%" />
+                                <col style="width: 15%" />
+                                <col style="width: 7%" />
+                                <col style="width: 20%" />
+                                <col style="width: 7%" />
+                                <col style="width: 8%" />
+                                <col style="width: 9%" />
+                                <col style="width: 9%" />
+                                <col style="width: 9%" />
+                                <col style="width: 9%" />
+                            </colgroup>
                             <thead>
                                 <tr>
-                                    <th style="font-size: 1.2em; padding: 5px;">ID Cliente</th>
-                                    <th style="font-size: 1.2em; padding: 5px;">Nome Cliente</th>
-                                    <th style="font-size: 1.2em; padding: 5px;">ID Produto</th>
-                                    <th style="font-size: 1.2em; padding: 5px;">Descrição Produto</th>
-                                    <th style="font-size: 1.2em; padding: 5px;">Quantidade</th>
-                                    <th style="font-size: 1.2em; padding: 5px;">ID Relacionado</th>
-                                    <th style="font-size: 1.2em; padding: 5px;">Data</th>
-                                    <th style="font-size: 1.2em; padding: 5px;">Preço Unitário</th>
-                                    <th style="font-size: 1.2em; padding: 5px;">Preço Total</th>
-                                    <th style="font-size: 1.2em; padding: 5px;">Origem</th>
+                                    <th>ID Cliente</th>
+                                    <th>Nome Cliente</th>
+                                    <th>ID Produto</th>
+                                    <th>Descrição Produto</th>
+                                    <th>Quantidade</th>
+                                    <th>ID Relacionado</th>
+                                    <th>Data</th>
+                                    <th>Preço Unitário</th>
+                                    <th>Preço Total</th>
+                                    <th>Origem</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php
-                                    foreach ($resultados as $r) {
-                                        echo '<tr>';
-                                        echo '<td>' . $r->idClientes . '</td>';
-                                        echo '<td>' . $r->nomeCliente . '</td>';
-                                        echo '<td>' . $r->idProdutos . '</td>';
-                                        echo '<td>' . $r->descricao . '</td>';
-                                        echo '<td>' . $r->quantidade . '</td>';
-                                        echo '<td>' . $r->idRelacionado . '</td>';
-                                        echo '<td>' . date('d/m/Y', strtotime($r->dataOcorrencia)) . '</td>';
-                                        echo '<td>' . 'R$ ' . number_format($r->preco, 2, ',', '.') . '</td>';
-                                        echo '<td>' . 'R$ ' . number_format($r->precoTotal, 2, ',', '.') . '</td>';
-                                        echo '<td>' . $r->origem . '</td>';
-                                        echo '</tr>';
-                                    }
-    ?>
+                                <?php if (empty($resultados)) : ?>
+                                    <tr>
+                                        <td colspan="10" class="rel-vazio">Nenhum registro no período informado.</td>
+                                    </tr>
+                                <?php endif ?>
+                                <?php foreach ($resultados as $r) :
+                                    $tsData = strtotime((string) $r->dataOcorrencia);
+                                    ?>
+                                    <tr>
+                                        <td class="ctr"><?= (int) $r->idClientes ?></td>
+                                        <td><?= html_escape((string) $r->nomeCliente) ?: '-' ?></td>
+                                        <td class="ctr"><?= (int) $r->idProdutos ?></td>
+                                        <td><?= html_escape((string) $r->descricao) ?: '-' ?></td>
+                                        <td class="ctr"><?= html_escape((string) $r->quantidade) ?></td>
+                                        <td class="ctr"><?= (int) $r->idRelacionado ?></td>
+                                        <td class="ctr"><?= $tsData ? date('d/m/Y', $tsData) : '-' ?></td>
+                                        <td class="num">R$ <?= number_format((float) $r->preco, 2, ',', '.') ?></td>
+                                        <td class="num">R$ <?= number_format((float) $r->precoTotal, 2, ',', '.') ?></td>
+                                        <td class="ctr"><?= html_escape((string) $r->origem) ?: '-' ?></td>
+                                    </tr>
+                                <?php endforeach ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <h5 style="text-align: right">Data do Relatório: <?php echo date('d/m/Y'); ?>
-                </h5>
+                <h5 class="rel-data">Data do Relatório: <?php echo date('d/m/Y'); ?></h5>
             </div>
         </div>
     </div>

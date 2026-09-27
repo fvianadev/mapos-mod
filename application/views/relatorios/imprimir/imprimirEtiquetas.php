@@ -1,3 +1,4 @@
+<?php if (empty($parcial)) { ?>
 <!DOCTYPE html>
 <html>
 
@@ -17,143 +18,64 @@
 			<div class="span12">
 				<div class="widget-box">
 					<div class="widget-content nopadding tab-content">
-						<?php
-                        if (
-                            $this->input->get("etiquetaCode") !== "EAN13" && $this->input->get("etiquetaCode") !== "QR"
-                            && $this->input->get("etiquetaCode") !== "UPCA"
-                        ) {
-                            if (isset($_GET['qtdEtiqueta'])) {
-                                foreach ($produtos as $p) {
-                                    for ($i = 0; $p->estoque >  $i++;) {
-                                        ?>
-							<div class="detalheProdutoEtiqueta">
-								<div class="descricaoProdutoEtiqueta">
-									<?php $string = strtoupper($p->descricao); ?>
-									<div>
-										<strong>
-											<?php print(limitarTexto($string, $limite = 23)); ?>
-										</strong>
-									</div>
-								</div>
-								<div class="textoProdutoEtiqueta">Cod:
-									<b>
-										<?php echo $p->idProdutos; ?>
-									</b>
-									<br /> Preço: R$
-									<b>
-										<?php $precoVenda = str_replace(".", ",", $p->precoVenda);
-                                        echo $precoVenda; ?>
-									</b>
-								</div>
-								<div class="barcodecell">
-									<barcode code="<?= $p->codDeBarra ?>" text="0" type="<?= $this->input->get("etiquetaCode") ?>" size="0.7" disableborder="0"
-									 class="barcode" />
-								</div>
-							</div>
-							<?php
-                                    }
-                                }
-                            } else {
-                                foreach ($produtos as $p) {
-                                    ?>
-							<div class="detalheProdutoEtiqueta">
-								<div class="descricaoProdutoEtiqueta">
-									<?php $string = strtoupper($p->descricao); ?>
-									<div>
-										<strong>
-											<?php print(limitarTexto($string, $limite = 23)); ?>
-										</strong>
-									</div>
-								</div>
-								<div class="textoProdutoEtiqueta">Cod:
-									<b>
-										<?php echo $p->idProdutos; ?>
-									</b>
-									<br /> Preço: R$
-									<b>
-										<?php $precoVenda = str_replace(".", ",", $p->precoVenda);
-                                    echo $precoVenda; ?>
-									</b>
-								</div>
+						<?php } ?>
 
-								<div class="barcodecell">
-									<barcode code="<?= $p->codDeBarra ?>" text="0" type="<?= $this->input->get("etiquetaCode") ?>" size="0.7" disableborder="0"
-									 class="barcode" />
-								</div>
+					<?php
+                        $formato = (string) $this->input->get('etiquetaCode');
+                        $porEstoque = isset($porEstoque) ? (bool) $porEstoque : isset($_GET['qtdEtiqueta']);
+                        $emLinha = in_array($formato, ['EAN13', 'UPCA', 'QR'], true);
+                        $classeEtiqueta = $emLinha ? 'detalheProdutoEtiquetaEan13' : 'detalheProdutoEtiqueta';
+                        $tamanhoBarcode = $emLinha ? '0.62' : '0.7';
 
-							</div>
-							<?php
-                                }
-                            }
-                        } else {
-                            if (isset($_GET['qtdEtiqueta'])) {
-                                foreach ($produtos as $p) {
-                                    for ($i = 0; $p->estoque >  $i++;) {
-                                        ?>
-							<div class="detalheProdutoEtiquetaEan13">
-								<div class="descricaoProdutoEtiqueta">
-									<?php $string = strtoupper($p->descricao); ?>
-									<div>
-										<strong>
-											<?php print(limitarTexto($string, $limite = 23)); ?>
-										</strong>
-									</div>
-								</div>
-								<div class="textoProdutoEtiqueta">Cod:
-									<b>
-										<?php echo $p->idProdutos; ?>
-									</b>
-									<br /> Preço: R$
-									<b>
-										<?php $precoVenda = str_replace(".", ",", $p->precoVenda);
-                                        echo $precoVenda; ?>
-									</b>
-								</div>
-								<div class="barcodecell">
-									<barcode code="<?= $p->codDeBarra ?>" text="0" type="<?= $this->input->get("etiquetaCode") ?>" size="0.62" disableborder="0"
-									 class="barcode" />
-								</div>
-							</div>
-
-
-							<?php
-                                    }
-                                }
-                            } else {
-                                foreach ($produtos as $p) {
-                                    ?>
-							<div class="detalheProdutoEtiquetaEan13">
-								<div class="descricaoProdutoEtiqueta">
-									<?php $string = strtoupper($p->descricao); ?>
-									<div>
-										<strong>
-											<?php print(limitarTexto($string, $limite = 23)); ?>
-										</strong>
-									</div>
-								</div>
-								<div class="textoProdutoEtiqueta">Cod:
-									<b>
-										<?php echo $p->idProdutos; ?>
-									</b>
-									<br /> Preço: R$
-									<b>
-										<?php $precoVenda = str_replace(".", ",", $p->precoVenda);
-                                    echo $precoVenda; ?>
-									</b>
-								</div>
-
-								<div class="barcodecell">
-									<barcode code="<?= $p->codDeBarra ?>" text="0" type="<?= $this->input->get("etiquetaCode") ?>" size="0.62" disableborder="0"
-									 class="barcode" />
-								</div>
-
-							</div>
-							<?php
+                        if (! isset($itens)) {
+                            $itens = [];
+                            foreach ($produtos as $produto) {
+                                $quantidade = $porEstoque ? max(0, (int) $produto->estoque) : 1;
+                                if ($quantidade > 0) {
+                                    $itens[] = ['produto' => $produto, 'quantidade' => $quantidade];
                                 }
                             }
                         }
-	?>
 
+                        foreach ($itens as $item) {
+                            $produto = $item['produto'];
+                            $string = strtoupper($produto->descricao);
+                            $precoVenda = str_replace('.', ',', $produto->precoVenda);
+                            $codigoValido = barcode_valido($produto->codDeBarra, $formato);
+                            for ($i = 0; $i < $item['quantidade']; $i++) {
+                                ?>
+							<div class="<?= $classeEtiqueta ?>">
+								<div class="descricaoProdutoEtiqueta">
+									<div>
+										<strong>
+											<?php print(limitarTexto($string, $limite = 23)); ?>
+										</strong>
+									</div>
+								</div>
+								<div class="textoProdutoEtiqueta">Cod:
+									<b>
+										<?php echo $produto->idProdutos; ?>
+									</b>
+									<br /> Preço: R$
+									<b>
+										<?php echo $precoVenda; ?>
+									</b>
+								</div>
+								<div class="barcodecell">
+									<?php if ($codigoValido) { ?>
+										<barcode code="<?= $produto->codDeBarra ?>" text="0" type="<?= $formato ?>" size="<?= $tamanhoBarcode ?>" disableborder="0"
+											class="barcode" />
+									<?php } else { ?>
+										<div class="codigo-sem-barra"><?= html_escape((string) $produto->codDeBarra) ?: 'Sem código de barras' ?></div>
+									<?php } ?>
+								</div>
+							</div>
+							<?php
+                            }
+                        }
+					?>
+
+					<?php if (empty($parcial)) { ?>
 					</div>
 				</div>
 			</div>
@@ -163,3 +85,4 @@
 </body>
 
 </html>
+					<?php } ?>
