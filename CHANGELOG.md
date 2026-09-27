@@ -4,6 +4,16 @@ Todas as alterações serão documentadas neste arquivo
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 e [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Nova tela unica de venda (cliente, itens e pagamento em uma unica tela) com busca, calculo de totais e atalhos de orcamento/aprovacao.
+
+### Fixed
+- Impressao em PDF dos relatorios: grade fechada, coluna Status no relatorio de vendas e estilos compartilhados.
+- Geracao de etiquetas em lotes para respeitar o limite de HTML do mPDF, validacao de codigos de barras e abertura em nova aba.
+- Layout dos filtros de clientes, produtos e servicos no padrao das telas de OS e vendas.
+
 ## [4.55.0] - 2026-09-25
 
 ### Added
