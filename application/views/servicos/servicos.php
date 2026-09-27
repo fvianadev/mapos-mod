@@ -11,22 +11,28 @@
         <h5>Serviços</h5>
     </div>
     <div class="span12" style="margin-left: 0">
-        <?php if ($this->permission->checkPermission($this->session->userdata('permissao'), 'aServico')) : ?>
-            <div class="span3 flexxn" style="display: flex;">
-                <a href="<?= base_url() ?>index.php/servicos/adicionar" class="button btn btn-mini btn-success" style="max-width: 160px">
-                    <span class="button__icon"><i class='bx bx-plus-circle'></i></span><span class="button__text2"> Serviços</span>
-                </a>
+        <form method="get" action="<?= base_url() ?>index.php/servicos">
+            <?php if ($this->permission->checkPermission($this->session->userdata('permissao'), 'aServico')) : ?>
+                <div class="span2">
+                    <a href="<?= base_url() ?>index.php/servicos/adicionar" class="button btn btn-mini btn-success" style="max-width: 160px">
+                        <span class="button__icon"><i class='bx bx-plus-circle'></i></span><span class="button__text2"> Serviços</span>
+                    </a>
+                </div>
+            <?php endif; ?>
+            <div class="span1">
+                <button class="button btn btn-mini btn-warning" style="min-width: 70px">
+                    <span class="button__icon"><i class='bx bx-search-alt'></i></span>
+                    <span class="button__text2">Filtrar</span>
+                </button>
             </div>
-        <?php endif; ?>
-        <form class="span9" method="get" action="<?= base_url() ?>index.php/servicos" style="display: flex; justify-content: flex-end;">
-            <div class="span3">
+            <div class="span4">
                 <input type="text" name="pesquisa" id="pesquisa" placeholder="Buscar por Nome ou Descrição..." class="span12" value="<?=html_escape($this->input->get('pesquisa'))?>">
             </div>
-            <div class="span1">
-                <button class="button btn btn-mini btn-warning" style="min-width: 30px">
-                    <span class="button__icon"><i class='bx bx-search-alt'></i></span></button>
-            </div>
         </form>
+    </div>
+
+    <div class="row-fluid" style="margin: 10px 0 5px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div id="custom-search-container" style="display: flex; align-items: center; justify-content: flex-end; margin-left: auto;"></div>
     </div>
     <div class="widget-box">
         <h5 style="padding: 3px 0"></h5>

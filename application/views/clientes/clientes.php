@@ -11,30 +11,29 @@
         <h5>Clientes</h5>
     </div>
     <div class="span12" style="margin-left: 0">
-        <?php if ($this->permission->checkPermission($this->session->userdata('permissao'), 'aCliente')) { ?>
-            <div class="span3">
-                <a href="<?= base_url() ?>index.php/clientes/adicionar" class="button btn btn-mini btn-success"
-                    style="max-width: 165px">
-                    <span class="button__icon"><i class='bx bx-plus-circle'></i></span><span class="button__text2">
-                        Cliente / Fornecedor
-                    </span>
-                </a>
-            </div>
-        <?php } ?>
-        <form class="span9" method="get" action="<?= base_url() ?>index.php/clientes"
-            style="display: flex; justify-content: flex-end;">
-            <div class="span3">
-                <input type="text" name="pesquisa" id="pesquisa"
-                    placeholder="Buscar por Nome, Doc, Email ou Telefone..." class="span12"
-                    value="<?= html_escape($this->input->get('pesquisa')) ?>">
-            </div>
+        <form method="get" action="<?= base_url() ?>index.php/clientes">
+            <?php if ($this->permission->checkPermission($this->session->userdata('permissao'), 'aCliente')) { ?>
+                <div class="span3">
+                    <a href="<?= base_url() ?>index.php/clientes/adicionar" class="button btn btn-mini btn-success" style="max-width: 165px">
+                        <span class="button__icon"><i class='bx bx-plus-circle'></i></span><span class="button__text2"> Cliente / Fornecedor</span>
+                    </a>
+                </div>
+            <?php } ?>
             <div class="span1">
-                <button class="button btn btn-mini btn-warning" style="min-width: 30px">
-                    <span class="button__icon"><i class='bx bx-search-alt'></i></span></button>
+                <button class="button btn btn-mini btn-warning" style="min-width: 70px">
+                    <span class="button__icon"><i class='bx bx-search-alt'></i></span>
+                    <span class="button__text2">Filtrar</span>
+                </button>
+            </div>
+            <div class="span5">
+                <input type="text" name="pesquisa" id="pesquisa" placeholder="Buscar por Nome, Doc, Email ou Telefone..." class="span12" value="<?= html_escape($this->input->get('pesquisa')) ?>">
             </div>
         </form>
     </div>
 
+    <div class="row-fluid" style="margin: 10px 0 5px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div id="custom-search-container" style="display: flex; align-items: center; justify-content: flex-end; margin-left: auto;"></div>
+    </div>
     <div class="widget-box">
         <h5 style="padding: 3px 0"></h5>
         <div class="widget-content nopadding tab-content">

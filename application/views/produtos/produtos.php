@@ -11,27 +11,32 @@
         <h5>Produtos</h5>
     </div>
     <div class="span12" style="margin-left: 0">
-        <?php if ($this->permission->checkPermission($this->session->userdata('permissao'), 'aProduto')) : ?>
-            <div class="span3 flexxn" style="display: flex;">
-                <a href="<?= base_url() ?>index.php/produtos/adicionar" class="button btn btn-mini btn-success" style="max-width: 160px">
-                    <span class="button__icon"><i class='bx bx-plus-circle'></i></span><span class="button__text2"> Produtos</span>
-                </a>
-                <a href="#modal-etiquetas" role="button" data-toggle="modal" class="button btn btn-mini btn-warning" style="max-width: 160px">
-                    <span class="button__icon"><i class='bx bx-barcode-reader' ></i></span><span class="button__text2">Gerar Etiquetas</span>
-                </a>
-            </div>
-        <?php endif; ?>
-        <form class="span9" method="get" action="<?= base_url() ?>index.php/produtos" style="display: flex; justify-content: flex-end;">
-            <div class="span3">
-                <input type="text" name="pesquisa" id="pesquisa" placeholder="Buscar por Nome ou Cod. barra..." class="span12" value="<?=html_escape($this->input->get('pesquisa'))?>">
-            </div>
+        <form method="get" action="<?= base_url() ?>index.php/produtos">
+            <?php if ($this->permission->checkPermission($this->session->userdata('permissao'), 'aProduto')) : ?>
+                <div class="span4 flexxn" style="display: flex;">
+                    <a href="<?= base_url() ?>index.php/produtos/adicionar" class="button btn btn-mini btn-success" style="max-width: 160px">
+                        <span class="button__icon"><i class='bx bx-plus-circle'></i></span><span class="button__text2"> Produtos</span>
+                    </a>
+                    <a href="#modal-etiquetas" role="button" data-toggle="modal" class="button btn btn-mini btn-warning" style="max-width: 160px">
+                        <span class="button__icon"><i class='bx bx-barcode-reader' ></i></span><span class="button__text2">Gerar Etiquetas</span>
+                    </a>
+                </div>
+            <?php endif; ?>
             <div class="span1">
-                <button class="button btn btn-mini btn-warning" style="min-width: 30px">
-                    <span class="button__icon"><i class='bx bx-search-alt'></i></span></button>
+                <button class="button btn btn-mini btn-warning" style="min-width: 70px">
+                    <span class="button__icon"><i class='bx bx-search-alt'></i></span>
+                    <span class="button__text2">Filtrar</span>
+                </button>
+            </div>
+            <div class="span5">
+                <input type="text" name="pesquisa" id="pesquisa" placeholder="Buscar por Nome ou Cod. barra..." class="span12" value="<?=html_escape($this->input->get('pesquisa'))?>">
             </div>
         </form>
     </div>
 
+    <div class="row-fluid" style="margin: 10px 0 5px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div id="custom-search-container" style="display: flex; align-items: center; justify-content: flex-end; margin-left: auto;"></div>
+    </div>
     <div class="widget-box">
         <h5 style="padding: 3px 0"></h5>
         <div class="widget-content nopadding tab-content">
@@ -135,7 +140,7 @@
 
 <!-- Modal Etiquetas -->
 <div id="modal-etiquetas" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-    <form action="<?php echo base_url() ?>index.php/relatorios/produtosEtiquetas" method="get">
+    <form action="<?php echo base_url() ?>index.php/relatorios/produtosEtiquetas" method="get" target="_blank">
         <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
             <h5 id="myModalLabel">Gerar etiquetas com Código de Barras</h5>
@@ -146,13 +151,13 @@
             <div class="span12" style="margin-left: 0;">
                 <div class="span6" style="margin-left: 0;">
                     <label for="valor">De</label>
-                    <input class="span9" style="margin-left: 0" type="text" id="de_id" name="de_id" placeholder="ID do primeiro produto" value=""/>
+                    <input class="span9" style="margin-left: 0" type="text" id="de_id" name="de_id" placeholder="ID do primeiro produto" value="" inputmode="numeric" pattern="[0-9]+" required />
                 </div>
 
 
                 <div class="span6">
                     <label for="valor">Até</label>
-                    <input class="span9" type="text" id="ate_id" name="ate_id" placeholder="ID do último produto" value=""/>
+                    <input class="span9" type="text" id="ate_id" name="ate_id" placeholder="ID do último produto" value="" inputmode="numeric" pattern="[0-9]+" required />
                 </div>
 
                 <div class="span4">
@@ -180,6 +185,13 @@
         </div>
     </form>
 </div>
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#modal-etiquetas form").on("submit", function () {
+            $("#modal-etiquetas").modal("hide");
+        });
+    });
+</script>
 <script src="<?php echo base_url() ?>assets/js/jquery.validate.js"></script>
 <!-- Modal Etiquetas e Estoque-->
 <script type="text/javascript">
