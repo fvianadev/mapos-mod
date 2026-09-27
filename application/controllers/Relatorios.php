@@ -196,20 +196,108 @@ class Relatorios extends MY_Controller
 
     public function produtosEtiquetas()
     {
-        $de = $this->input->get('de_id');
-        $ate = $this->input->get('ate_id');
-        try {
-            if ($de <= $ate) {
-                $data['produtos'] = $this->Relatorios_model->produtosEtiquetas($de, $ate);
-                $this->load->helper('mpdf');
-                $html = $this->load->view('relatorios/imprimir/imprimirEtiquetas', $data, true);
-                pdf_create($html, 'etiquetas_' . $de . '_' . $ate, true);
-            } else {
-                $this->session->set_flashdata('error', 'O campo "<b>De</b>" não pode ser maior doque o campo "<b>Até</b>"!');
-                redirect('produtos');
+        $de = (string) $this->input->get('de_id');
+        $ate = (string) $this->input->get('ate_id');
+        $codigo = (string) $this->input->get('etiquetaCode');
+        $formatos = ['EAN13', 'UPCA', 'C93', 'C128A', 'CODABAR', 'QR'];
+
+        if ($de === '' || $ate === '' || ! ctype_digit($de) || ! ctype_digit($ate)) {
+            $this->session->set_flashdata('error', 'Informe os campos "<b>De</b>" e "<b>Até</b>" com os IDs dos produtos.');
+            redirect('produtos');
+            return;
+        }
+
+        if ((int) $de > (int) $ate) {
+            $this->session->set_flashdata('error', 'O campo "<b>De</b>" não pode ser maior do que o campo "<b>Até</b>"!');
+            redirect('produtos');
+            return;
+        }
+
+        if (! in_array($codigo, $formatos, true)) {
+            $this->session->set_flashdata('error', 'Formato de etiqueta inválido. Escolha uma das opções disponíveis.');
+            redirect('produtos');
+            return;
+        }
+
+        $this->load->helper('mpdf');
+
+        $produtos = $this->Relatorios_model->produtosEtiquetas($de, $ate);
+        if (empty($produtos)) {
+            $this->session->set_flashdata('error', 'Nenhum produto encontrado com ID entre <b>' . $de . '</b> e <b>' . $ate . '</b>.');
+            redirect('produtos');
+            return;
+        }
+
+        $codigosValidos = 0;
+        foreach ($produtos as $produto) {
+            if (barcode_valido($produto->codDeBarra, $codigo)) {
+                $codigosValidos++;
             }
+        }
+        if ($codigosValidos === 0) {
+            $this->session->set_flashdata('error', 'Nenhum produto do intervalo tem código de barras compatível com o formato <b>' . $codigo . '</b>. Escolha CODE 93, CODE 128 ou CODABAR, ou corrija os códigos dos produtos.');
+            redirect('produtos');
+            return;
+        }
+
+        $porEstoque = $this->input->get('qtdEtiqueta') !== null;
+        $totalEtiquetas = 0;
+        foreach ($produtos as $produto) {
+            $totalEtiquetas += $porEstoque ? max(0, (int) $produto->estoque) : 1;
+        }
+        if ($totalEtiquetas === 0) {
+            $this->session->set_flashdata('error', 'Os produtos do intervalo estão sem estoque. Desmarque "<b>Qtd. do Estoque</b>" ou escolha outro intervalo.');
+            redirect('produtos');
+            return;
+        }
+        if ($totalEtiquetas > 5000) {
+            $this->session->set_flashdata('error', 'A geração tem <b>' . number_format($totalEtiquetas) . '</b> etiquetas e o limite é <b>5.000</b> por vez. Gere em lotes menores (intervalo menor ou desmarque "Qtd. do Estoque").');
+            redirect('produtos');
+            return;
+        }
+
+        try {
+            set_time_limit(1800);
+            $this->load->helper('mpdf');
+
+            $itens = [];
+            foreach ($produtos as $produto) {
+                $quantidade = $porEstoque ? max(0, (int) $produto->estoque) : 1;
+                while ($quantidade > 0) {
+                    $fatia = min($quantidade, 250);
+                    $itens[] = ['produto' => $produto, 'quantidade' => $fatia];
+                    $quantidade -= $fatia;
+                }
+            }
+
+            $lotes = [];
+            $lote = [];
+            $qtdLote = 0;
+            foreach ($itens as $item) {
+                if ($lote && $qtdLote + $item['quantidade'] > 250) {
+                    $lotes[] = $lote;
+                    $lote = [];
+                    $qtdLote = 0;
+                }
+                $lote[] = $item;
+                $qtdLote += $item['quantidade'];
+            }
+            if ($lote) {
+                $lotes[] = $lote;
+            }
+
+            $pedacos = [];
+            foreach ($lotes as $indice => $loteAtual) {
+                $pedacos[] = $this->load->view('relatorios/imprimir/imprimirEtiquetas', [
+                    'produtos' => $produtos,
+                    'itens' => $loteAtual,
+                    'porEstoque' => $porEstoque,
+                    'parcial' => $indice > 0,
+                ], true);
+            }
+            pdf_create($pedacos, 'etiquetas_' . $de . '_' . $ate, true);
         } catch (Exception $e) {
-            $this->session->set_flashdata('error', $e->getMessage());
+            $this->session->set_flashdata('error', 'Não foi possível gerar as etiquetas: ' . $e->getMessage());
             redirect('produtos');
         }
     }

@@ -15,7 +15,10 @@ function pdf_create($html, $filename, $stream = true, $landscape = false)
     }
 
     $mpdf->showImageErrors = true;
-    $mpdf->WriteHTML($html);
+
+    foreach ((array) $html as $pedaco) {
+        $mpdf->WriteHTML($pedaco);
+    }
 
     if ($stream) {
         $mpdf->Output($filename . '.pdf', 'I');
@@ -23,5 +26,18 @@ function pdf_create($html, $filename, $stream = true, $landscape = false)
         $mpdf->Output(FCPATH . 'assets/uploads/temp/' . $filename . '.pdf', 'F');
 
         return FCPATH . 'assets/uploads/temp/' . $filename . '.pdf';
+    }
+}
+
+function barcode_valido($code, $type)
+{
+    if ((string) $type === 'QR') {
+        return class_exists('Mpdf\QrCode\QrCode');
+    }
+
+    try {
+        return (new \Mpdf\Barcode())->getBarcodeArray((string) $code, (string) $type) !== false;
+    } catch (\Throwable $e) {
+        return false;
     }
 }

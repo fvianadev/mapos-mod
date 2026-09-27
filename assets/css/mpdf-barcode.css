@@ -36,3 +36,11 @@
 .textoProdutoEtiqueta {
 	font-size: 70%;
 }
+
+.codigo-sem-barra {
+	font-size: 70%;
+	font-weight: bold;
+	text-align: center;
+	padding: 2mm 0;
+	overflow-wrap: anywhere;
+}
