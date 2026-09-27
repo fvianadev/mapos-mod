@@ -79,49 +79,262 @@ class Vendas extends MY_Controller
 
         $this->load->library('form_validation');
         $this->data['custom_error'] = '';
+        $this->data['itensAnteriores'] = [];
 
-        if ($this->form_validation->run('vendas') == false) {
-            $this->data['custom_error'] = (validation_errors() ? true : false);
-        } else {
-            $dataVenda = $this->input->post('dataVenda');
+        if ($this->input->method() === 'post') {
+            $this->form_validation->set_rules('dataVenda', 'Data da Venda', 'required|trim', [
+                'required' => 'Informe a data da venda.',
+            ]);
+            $this->form_validation->set_rules('clientes_id', 'Cliente', 'required|trim|numeric', [
+                'required' => 'Selecione o cliente na lista.',
+            ]);
+            $this->form_validation->set_rules('usuarios_id', 'Vendedor', 'required|trim|numeric', [
+                'required' => 'Informe o vendedor.',
+            ]);
+            $this->form_validation->set_rules('status', 'Status', 'required|trim', [
+                'required' => 'Escolha o status da venda.',
+            ]);
+            $this->form_validation->set_rules('garantia', 'Garantia', 'trim|integer', [
+                'integer' => 'A garantia deve ser um número inteiro de dias.',
+            ]);
+            $this->form_validation->set_rules('desconto', 'Desconto', 'trim|numeric', [
+                'numeric' => 'O desconto deve ser um valor numérico (use ponto como separador decimal).',
+            ]);
+            $this->form_validation->set_rules('tipoDesconto', 'Tipo de Desconto', 'trim');
+            $this->form_validation->set_rules('observacoes', 'Observações Internas', 'trim');
+            $this->form_validation->set_rules('observacoes_cliente', 'Observações ao Cliente', 'trim');
+            $this->form_validation->set_rules('itens_json', 'Itens da venda', 'required|trim', [
+                'required' => 'Adicione ao menos um produto à venda.',
+            ]);
 
-            try {
-                $dataVenda = explode('/', $dataVenda);
-                $dataVenda = $dataVenda[2] . '-' . $dataVenda[1] . '-' . $dataVenda[0];
-            } catch (Exception $e) {
-                $dataVenda = date('Y-m-d');
+            $faturar = $this->input->post('faturar') == 1;
+            $this->form_validation->set_rules('cliente', 'Cliente', 'trim');
+            if ($faturar) {
+                $this->form_validation->set_rules('vencimento', 'Data de Entrada', 'required', [
+                    'required' => 'Informe a data de entrada para faturar.',
+                ]);
             }
 
-            $status = $this->input->post('status');
-            if (! in_array($status, ['Orçamento', 'Aprovado'], true)) {
-                $status = 'Orçamento';
-            }
+            $status = (string) $this->input->post('status');
+            $itens = $this->decodeItens($this->input->post('itens_json'));
+            $this->data['itensAnteriores'] = is_array($itens) ? $itens : [];
 
-            $data = [
-                'dataVenda' => $dataVenda,
-                'observacoes' => $this->input->post('observacoes'),
-                'observacoes_cliente' => $this->input->post('observacoes_cliente'),
-                'clientes_id' => $this->input->post('clientes_id'),
-                'usuarios_id' => $this->input->post('usuarios_id'),
-                'faturado' => 0,
-                'status' => $status,
-                'garantia' => $this->input->post('garantia')
-            ];
-
-            $id = $this->vendas_model->add('vendas', $data, true);
-
-            if (is_numeric($id)) {
-                $this->session->set_flashdata('success', 'Venda iniciada com sucesso, adicione os produtos.');
-                log_info('Adicionou uma venda. ID: ' . $id);
-                redirect(site_url('vendas/editar/') . $id);
+            if ($this->form_validation->run() == false) {
+                $this->data['custom_error'] = validation_errors('<p>', '</p>');
+                if (! $this->data['custom_error']) {
+                    $this->data['custom_error'] = '<p>Verifique os campos destacados e informe ao menos um produto.</p>';
+                }
+            } elseif (! in_array($status, ['Orçamento', 'Aprovado'], true)) {
+                $this->data['custom_error'] = '<p>Status inválido. Escolha Orçamento ou Aprovado.</p>';
+            } elseif ($itens === null) {
+                $this->data['custom_error'] = '<p>A lista de itens enviada é inválida.</p>';
+            } elseif (empty($itens)) {
+                $this->data['custom_error'] = '<p>Adicione ao menos um produto à venda.</p>';
+            } elseif (($erroItens = $this->validarItens($itens)) !== null) {
+                $this->data['custom_error'] = '<p>' . html_escape($erroItens) . '</p>';
             } else {
-                $this->data['custom_error'] = '<div class="form_error"><p>Ocorreu um erro.</p></div>';
+                $resultado = $this->salvarNovaVenda($itens, $status, $faturar);
+
+                if ($resultado['result']) {
+                    $this->session->set_flashdata('success', $resultado['message']);
+                    log_info('Adicionou uma venda. ID: ' . $resultado['idVendas']);
+
+                    redirect(site_url('vendas/visualizar/' . $resultado['idVendas']));
+                }
+
+                $this->data['custom_error'] = '<p>' . html_escape($resultado['message']) . '</p>';
             }
         }
 
-        $this->data['view'] = 'vendas/adicionarVenda';
+        $this->data['view'] = 'vendas/novaVenda';
 
         return $this->layout();
+    }
+
+    private function decodeItens($json)
+    {
+        if (! is_string($json) || trim($json) === '') {
+            return [];
+        }
+
+        $itens = json_decode($json, true);
+
+        return is_array($itens) ? $itens : null;
+    }
+
+    private function validarItens(array $itens)
+    {
+        $quantidades = [];
+
+        foreach ($itens as $item) {
+            $produtosId = $item['produtos_id'] ?? null;
+            $quantidade = $item['quantidade'] ?? null;
+            $preco = $item['preco'] ?? null;
+
+            if (! is_numeric($produtosId) || (int) $produtosId <= 0) {
+                return 'Um dos itens não tem um produto válido.';
+            }
+            if (filter_var($quantidade, FILTER_VALIDATE_INT) === false || (int) $quantidade <= 0) {
+                return 'A quantidade de todos os itens deve ser um número inteiro maior que zero.';
+            }
+            if (! is_numeric($preco) || (float) $preco < 0) {
+                return 'O preço de todos os itens deve ser igual ou maior que zero.';
+            }
+
+            $produtosId = (int) $produtosId;
+            $quantidades[$produtosId] = ($quantidades[$produtosId] ?? 0) + (int) $quantidade;
+        }
+
+        if (! $this->data['configuration']['control_estoque']) {
+            return null;
+        }
+
+        $produtos = $this->db->where_in('idProdutos', array_keys($quantidades))->get('produtos')->result();
+
+        if (count($produtos) !== count($quantidades)) {
+            return 'Um dos produtos da lista não foi encontrado.';
+        }
+
+        foreach ($produtos as $produto) {
+            if ((int) $produto->saida !== 1) {
+                return "O produto \"{$produto->descricao}\" não está habilitado para saída/venda.";
+            }
+            if ((float) $produto->estoque < $quantidades[$produto->idProdutos]) {
+                return "Estoque insuficiente para \"{$produto->descricao}\" (disponível: " . number_format((float) $produto->estoque, 2, ',', '.') . ').';
+            }
+        }
+
+        return null;
+    }
+
+    private function calcularTotaisVenda(array $itens)
+    {
+        $subtotal = 0.0;
+        foreach ($itens as $item) {
+            $subtotal += (float) $item['quantidade'] * (float) $item['preco'];
+        }
+        $subtotal = round($subtotal, 2);
+
+        $desconto = (float) $this->input->post('desconto');
+        $tipoDesconto = $this->input->post('tipoDesconto') === 'porcento' ? 'porcento' : 'real';
+        $descontoValor = $tipoDesconto === 'porcento' ? $subtotal * ($desconto / 100) : $desconto;
+        $descontoValor = round(min($subtotal, max(0, $descontoValor)), 2);
+
+        return [
+            'subtotal' => $subtotal,
+            'desconto' => $desconto,
+            'tipo_desconto' => $tipoDesconto,
+            'desconto_valor' => $descontoValor,
+            'liquido' => round($subtotal - $descontoValor, 2),
+        ];
+    }
+
+    private function salvarNovaVenda(array $itens, $status, $faturar)
+    {
+        $data = DateTime::createFromFormat('d/m/Y', (string) $this->input->post('dataVenda'));
+        if (! $data instanceof DateTime) {
+            return ['result' => false, 'message' => 'Data da venda inválida.'];
+        }
+        $dataVenda = $data->format('Y-m-d');
+
+        $vencimento = null;
+        $recebimento = null;
+
+        if ($faturar) {
+            $vencimentoInfo = DateTime::createFromFormat('d/m/Y', (string) $this->input->post('vencimento'));
+            if (! $vencimentoInfo instanceof DateTime) {
+                return ['result' => false, 'message' => 'Data de entrada inválida.'];
+            }
+            $vencimento = $vencimentoInfo->format('Y-m-d');
+
+            $recebimentoInfo = (string) $this->input->post('recebimento');
+            if ($recebimentoInfo !== '') {
+                $recebimentoData = DateTime::createFromFormat('d/m/Y', $recebimentoInfo);
+                if (! $recebimentoData instanceof DateTime) {
+                    return ['result' => false, 'message' => 'Data de recebimento inválida.'];
+                }
+                $recebimento = $recebimentoData->format('Y-m-d');
+            }
+        }
+
+        $totais = $this->calcularTotaisVenda($itens);
+        $garantia = $this->input->post('garantia');
+
+        $venda = [
+            'dataVenda' => $dataVenda,
+            'observacoes' => $this->input->post('observacoes'),
+            'observacoes_cliente' => $this->input->post('observacoes_cliente'),
+            'clientes_id' => (int) $this->input->post('clientes_id'),
+            'usuarios_id' => (int) $this->input->post('usuarios_id'),
+            'faturado' => 0,
+            'status' => $status,
+            'garantia' => ($garantia === null || $garantia === '') ? null : (int) $garantia,
+            'desconto' => $totais['desconto_valor'] > 0 ? number_format($totais['desconto'], 2, '.', '') : '0.00',
+            'tipo_desconto' => $totais['desconto_valor'] > 0 ? $totais['tipo_desconto'] : null,
+            'valorTotal' => number_format($totais['subtotal'], 2, '.', ''),
+            'valor_desconto' => number_format($totais['liquido'], 2, '.', ''),
+        ];
+
+        $erro = null;
+
+        $this->db->trans_start();
+
+        $idVenda = $this->vendas_model->add('vendas', $venda, true);
+
+        if (! is_numeric($idVenda)) {
+            $erro = 'Não foi possível criar a venda.';
+        } else {
+            foreach ($itens as $item) {
+                $quantidade = (int) $item['quantidade'];
+                $preco = (float) $item['preco'];
+
+                $itemSalvo = $this->vendas_model->add('itens_de_vendas', [
+                    'quantidade' => $quantidade,
+                    'subTotal' => number_format($quantidade * $preco, 2, '.', ''),
+                    'produtos_id' => (int) $item['produtos_id'],
+                    'preco' => number_format($preco, 2, '.', ''),
+                    'vendas_id' => $idVenda,
+                ]);
+
+                if (! $itemSalvo) {
+                    $erro = 'Não foi possível salvar um dos itens da venda.';
+                    break;
+                }
+            }
+        }
+
+        if ($erro === null && $faturar) {
+            $faturamento = $this->vendas_model->faturarVenda($idVenda, [
+                'vencimento' => $vencimento,
+                'recebimento' => $recebimento,
+                'recebido' => $this->input->post('recebido') == 1,
+                'formaPgto' => $this->input->post('formaPgto'),
+                'descricao' => $this->input->post('descricao'),
+                'usuarios_id' => $this->session->userdata('id_admin'),
+            ]);
+
+            if (! $faturamento['result']) {
+                $erro = $faturamento['message'];
+            }
+        }
+
+        if ($erro !== null) {
+            $this->db->trans_rollback();
+
+            return ['result' => false, 'message' => $erro];
+        }
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === false) {
+            return ['result' => false, 'message' => 'Erro ao gravar a venda. Operação revertida.'];
+        }
+
+        if ($faturar) {
+            return ['result' => true, 'idVendas' => $idVenda, 'message' => "Venda #{$idVenda} criada e faturada com sucesso! Receita gerada e estoque atualizado."];
+        }
+
+        return ['result' => true, 'idVendas' => $idVenda, 'message' => "Venda #{$idVenda} criada com sucesso!"];
     }
 
     public function editar()
@@ -584,128 +797,53 @@ class Vendas extends MY_Controller
 
     public function faturar()
     {
-        if (!$this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')) {
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')) {
             $this->session->set_flashdata('error', 'Você não tem permissão para editar Vendas');
             redirect(base_url());
         }
 
         $this->load->library('form_validation');
-        $this->data['custom_error'] = '';
 
         if ($this->form_validation->run('receita') == false) {
-            $this->data['custom_error'] = (validation_errors() ? '<div class="form_error">' . validation_errors() . '</div>' : false);
-        } else {
-            $venda_id = $this->input->post('vendas_id');
-            $vencimento = $this->input->post('vencimento');
-            $recebimento = $this->input->post('recebimento');
-
-            try {
-                $vencimento = explode('/', $vencimento);
-                $vencimento = $vencimento[2] . '-' . $vencimento[1] . '-' . $vencimento[0];
-
-                if ($recebimento != null) {
-                    $recebimento = explode('/', $recebimento);
-                    $recebimento = $recebimento[2] . '-' . $recebimento[1] . '-' . $recebimento[0];
-                }
-            } catch (Exception $e) {
-                $vencimento = date('Y-m-d');
-            }
-
-            $vendas = $this->vendas_model->getById($venda_id);
-
-            if (! $vendas) {
-                echo json_encode(['result' => false, 'message' => 'Venda não encontrada.']);
-                exit();
-            }
-
-            if ((int) $vendas->faturado === 1) {
-                echo json_encode(['result' => false, 'message' => 'Venda já faturada.']);
-                exit();
-            }
-
-            if ($vendas->status === 'Cancelado') {
-                echo json_encode(['result' => false, 'message' => 'Venda cancelada não pode ser faturada.']);
-                exit();
-            }
-
-            $descricao = set_value('descricao');
-            if ($descricao === '') {
-                $descricao = "Fatura de Venda #{$venda_id} - {$vendas->nomeCliente}";
-            }
-
-            $valorTotal = getAmount($this->input->post('valor'));
-            $tipoDesconto = $vendas->tipo_desconto;
-            $valorDesconto = $vendas->desconto;
-
-            if ($tipoDesconto == 'percentual') {
-                $valorDesconto = $valorTotal * ($valorDesconto / 100);
-            } elseif ($tipoDesconto == 'real') {
-                $valorDesconto = $valorDesconto;
-            } else {
-                $valorDesconto = 0;
-            }
-
-            $valorDesconto = min($valorTotal, $valorDesconto);
-            $valorComDesconto = $valorTotal - $valorDesconto;
-
-            $data = [
-                'vendas_id' => $venda_id,
-                'descricao' => $descricao,
-                'valor' => $valorTotal,
-                'desconto' => $vendas->desconto,
-                'tipo_desconto' => 'real',
-                'valor_desconto' => $valorComDesconto,
-                'clientes_id' => $this->input->post('clientes_id'),
-                'data_vencimento' => $vencimento,
-                'data_pagamento' => $recebimento,
-                'baixado' => $this->input->post('recebido') == 1 ? true : false,
-                'cliente_fornecedor' => set_value('cliente'),
-                'forma_pgto' => $this->input->post('formaPgto'),
-                'tipo' => 'receita',
-                'usuarios_id' => $this->session->userdata('id_admin'),
-            ];
-
-            $this->db->trans_start();
-
-            $this->db->insert('lancamentos', $data);
-            $idLancamentos = $this->db->insert_id();
-
-            if ($idLancamentos) {
-                $this->db->set('faturado', 1);
-                $this->db->set('valorTotal', $valorTotal);
-                $this->db->set('desconto', $vendas->desconto);
-                $this->db->set('valor_desconto', $valorComDesconto);
-                $this->db->set('lancamentos_id', $idLancamentos);
-                $this->db->set('status', 'Faturado');
-                $this->db->where('idVendas', $venda_id);
-                $this->db->update('vendas');
-
-                $this->vendas_model->debitarEstoque($venda_id);
-
-                log_info('Faturou a venda com ID.' . $venda_id);
-
-                $this->db->trans_complete();
-
-                if ($this->db->trans_status() === false) {
-                    $this->session->set_flashdata('error', 'Ocorreu um erro ao tentar faturar venda.');
-                    $json = ['result' => false];
-                } else {
-                    $this->session->set_flashdata('success', 'Venda faturada com sucesso!');
-                    $json = ['result' => true];
-                }
-            } else {
-                $this->db->trans_rollback();
-                $this->session->set_flashdata('error', 'Ocorreu um erro ao tentar faturar venda.');
-                $json = ['result' => false];
-            }
-
-            echo json_encode($json);
+            echo json_encode([
+                'result' => false,
+                'message' => strip_tags(validation_errors()) ?: 'Verifique os campos do faturamento.',
+            ]);
             exit();
         }
 
-        $this->session->set_flashdata('error', 'Ocorreu um erro ao tentar faturar venda.');
-        $json = ['result' => false];
-        echo json_encode($json);
+        $vencimento = $this->converterData($this->input->post('vencimento'));
+        $recebimento = (string) $this->input->post('recebimento');
+        $recebimento = $recebimento !== '' ? $this->converterData($recebimento) : null;
+
+        if ($vencimento === null) {
+            echo json_encode(['result' => false, 'message' => 'Data de entrada inválida.']);
+            exit();
+        }
+
+        if ((string) $this->input->post('recebimento') !== '' && $recebimento === null) {
+            echo json_encode(['result' => false, 'message' => 'Data de recebimento inválida.']);
+            exit();
+        }
+
+        $resultado = $this->vendas_model->faturarVenda($this->input->post('vendas_id'), [
+            'vencimento' => $vencimento,
+            'recebimento' => $recebimento,
+            'recebido' => $this->input->post('recebido') == 1,
+            'formaPgto' => $this->input->post('formaPgto'),
+            'descricao' => $this->input->post('descricao'),
+            'usuarios_id' => $this->session->userdata('id_admin'),
+        ]);
+
+        echo json_encode($resultado);
+        exit();
+    }
+
+    private function converterData($data)
+    {
+        $data = DateTime::createFromFormat('d/m/Y', (string) $data);
+
+        return $data instanceof DateTime ? $data->format('Y-m-d') : null;
     }
 
     public function atualizarStatusEmMassa()
@@ -798,107 +936,53 @@ class Vendas extends MY_Controller
         }
 
         $ids = $this->input->post('ids');
-        $vencimento = $this->input->post('vencimento');
-        $recebimento = $this->input->post('recebimento');
+        $vencimento = (string) $this->input->post('vencimento');
+        $recebimento = (string) $this->input->post('recebimento');
         $recebido = $this->input->post('recebido') ?: 0;
-        $formaPgto = $this->input->post('formaPgto');
 
-        if (empty($ids) || ! is_array($ids) || empty($vencimento)) {
+        if (empty($ids) || ! is_array($ids) || $vencimento === '') {
             echo json_encode(['result' => false, 'message' => 'Nenhuma venda selecionada ou data de entrada obrigatória.']);
             exit();
         }
 
-        try {
-            $vencimento = DateTime::createFromFormat('d/m/Y', $vencimento)->format('Y-m-d');
-            if ($recebimento != null && $recebimento !== '') {
-                $recebimento = DateTime::createFromFormat('d/m/Y', $recebimento)->format('Y-m-d');
-            } else {
-                $recebimento = null;
-            }
-        } catch (Exception $e) {
-            $vencimento = date('Y-m-d');
+        $vencimentoData = $this->converterData($vencimento);
+        $recebimentoData = $recebimento !== '' ? $this->converterData($recebimento) : null;
+
+        if ($vencimentoData === null) {
+            echo json_encode(['result' => false, 'message' => 'Data de entrada inválida.']);
+            exit();
         }
 
-        $this->load->model('mapos_model');
-        $emitente = $this->mapos_model->getEmitente();
-
-        $this->db->trans_start();
+        if ($recebimento !== '' && $recebimentoData === null) {
+            echo json_encode(['result' => false, 'message' => 'Data de recebimento inválida.']);
+            exit();
+        }
 
         $faturados = 0;
         $skipped = [];
 
         foreach ($ids as $id) {
-            $venda = $this->vendas_model->getById($id);
-            if (! $venda) {
-                $skipped[] = "Venda #{$id} (não encontrada)";
-                continue;
-            }
-
-            if (! $this->vendas_model->isEditable($id)) {
-                $skipped[] = "Venda #{$id} (já faturada — não editável)";
-                continue;
-            }
-
-            if ((int) $venda->faturado === 1) {
-                $skipped[] = "Venda #{$id} (já faturada)";
-                continue;
-            }
-
-            if ($venda->status === 'Cancelado') {
-                $skipped[] = "Venda #{$id} (cancelada — não pode ser faturada)";
-                continue;
-            }
-
-            $valorTotal = floatval($venda->valor_desconto) > 0 ? floatval($venda->valor_desconto) : floatval($venda->valorTotal);
-
-            $lancamentoData = [
-                'descricao' => "Fatura de Venda #{$id} - {$venda->nomeCliente}",
-                'clientes_id' => $venda->idClientes,
-                'data_vencimento' => $vencimento,
-                'data_pagamento' => $recebimento,
-                'baixado' => $recebido ? 1 : 0,
-                'cliente_fornecedor' => $venda->nomeCliente,
-                'forma_pgto' => $recebido ? $formaPgto : null,
-                'tipo' => 'receita',
+            $resultado = $this->vendas_model->faturarVenda($id, [
+                'vencimento' => $vencimentoData,
+                'recebimento' => $recebimentoData,
+                'recebido' => $recebido,
+                'formaPgto' => $this->input->post('formaPgto'),
                 'usuarios_id' => $this->session->userdata('id_admin'),
-                'valor' => $valorTotal,
-                'desconto' => $venda->desconto,
-                'tipo_desconto' => 'real',
-                'valor_desconto' => $valorTotal,
-            ];
+            ]);
 
-            $this->db->insert('lancamentos', $lancamentoData);
-            $idLancamento = $this->db->insert_id();
-
-            if ($idLancamento) {
-                $this->db->set('faturado', 1);
-                $this->db->set('valorTotal', $valorTotal);
-                $this->db->set('lancamentos_id', $idLancamento);
-                $this->db->set('status', 'Faturado');
-                $this->db->where('idVendas', $id);
-                $this->db->update('vendas');
-
-                $this->vendas_model->debitarEstoque($id);
-
+            if ($resultado['result']) {
                 $faturados++;
                 log_info('Faturou venda em massa. ID: ' . $id);
             } else {
-                $skipped[] = "Venda #{$id} (erro ao criar lançamento)";
+                $skipped[] = "Venda #{$id} ({$resultado['message']})";
             }
-        }
-
-        $this->db->trans_complete();
-
-        if ($this->db->trans_status() === false) {
-            echo json_encode(['result' => false, 'message' => 'Erro ao faturar em massa. Operação revertida.']);
-            exit();
         }
 
         log_info("Faturou vendas em massa: {$faturados} vendas");
 
         $message = "{$faturados} venda(s) faturada(s) com sucesso.";
         if (! empty($skipped)) {
-            $message .= " Pulada(s): " . implode(', ', $skipped);
+            $message .= ' Pulada(s): ' . implode(', ', $skipped);
         }
 
         echo json_encode(['result' => true, 'updated' => $faturados, 'skipped' => $skipped, 'message' => $message]);

@@ -524,7 +524,7 @@ foreach ($produtos as $p) {
                                 Swal.fire({
                                     type: "error",
                                     title: "Atenção",
-                                    text: "Ocorreu um erro ao tentar faturar venda."
+                                    text: (data && data.message) ? data.message : "Ocorreu um erro ao tentar faturar venda."
                                 });
                                 $('#progress-fatura').hide();
                             }

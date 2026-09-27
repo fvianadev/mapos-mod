@@ -212,6 +212,93 @@ class Vendas_model extends CI_Model
         return true;
     }
 
+    public function faturarVenda($idVendas, array $dados = [])
+    {
+        $venda = $this->getById($idVendas);
+
+        if (! $venda) {
+            return ['result' => false, 'message' => 'Venda não encontrada.'];
+        }
+
+        if ((int) $venda->faturado === 1) {
+            return ['result' => false, 'message' => 'Venda já faturada.'];
+        }
+
+        if ($venda->status === 'Cancelado') {
+            return ['result' => false, 'message' => 'Venda cancelada não pode ser faturada.'];
+        }
+
+        $itens = $this->getProdutos($idVendas);
+        if (empty($itens)) {
+            return ['result' => false, 'message' => 'Não é possível faturar uma venda sem produtos.'];
+        }
+
+        $subtotal = 0.0;
+        foreach ($itens as $item) {
+            $subtotal += (float) $item->subTotal;
+        }
+
+        $descontoBruto = (float) $venda->desconto;
+        $desconto = $venda->tipo_desconto === 'porcento' ? $subtotal * ($descontoBruto / 100) : $descontoBruto;
+        $desconto = round(min($subtotal, max(0, $desconto)), 2);
+        $liquido = round($subtotal - $desconto, 2);
+
+        $vencimento = $dados['vencimento'] ?? date('Y-m-d');
+        $recebido = ! empty($dados['recebido']);
+        $recebimento = $dados['recebimento'] ?? null;
+        if ($recebido && ($recebimento === null || $recebimento === '')) {
+            $recebimento = $vencimento;
+        }
+
+        $lancamento = [
+            'descricao' => trim($dados['descricao'] ?? '') !== '' ? $dados['descricao'] : "Fatura de Venda #{$idVendas} - {$venda->nomeCliente}",
+            'vendas_id' => $idVendas,
+            'clientes_id' => $venda->clientes_id,
+            'cliente_fornecedor' => $venda->nomeCliente,
+            'valor' => number_format($subtotal, 2, '.', ''),
+            'desconto' => number_format($desconto, 2, '.', ''),
+            'tipo_desconto' => 'real',
+            'valor_desconto' => number_format($liquido, 2, '.', ''),
+            'data_vencimento' => $vencimento,
+            'data_pagamento' => $recebimento,
+            'baixado' => $recebido ? 1 : 0,
+            'forma_pgto' => $recebido ? ($dados['formaPgto'] ?? null) : null,
+            'tipo' => 'receita',
+            'usuarios_id' => $dados['usuarios_id'] ?? $this->session->userdata('id_admin'),
+        ];
+
+        $this->db->trans_start();
+
+        $this->db->insert('lancamentos', $lancamento);
+        $idLancamento = $this->db->insert_id();
+
+        if (! $idLancamento) {
+            $this->db->trans_complete();
+
+            return ['result' => false, 'message' => 'Erro ao criar o lançamento financeiro.'];
+        }
+
+        $this->db->update('vendas', [
+            'faturado' => 1,
+            'status' => 'Faturado',
+            'valorTotal' => number_format($subtotal, 2, '.', ''),
+            'valor_desconto' => number_format($liquido, 2, '.', ''),
+            'lancamentos_id' => $idLancamento,
+        ], ['idVendas' => $idVendas]);
+
+        $this->debitarEstoque($idVendas);
+
+        $this->db->trans_complete();
+
+        if ($this->db->trans_status() === false) {
+            return ['result' => false, 'message' => 'Erro ao faturar a venda. Operação revertida.'];
+        }
+
+        log_info('Faturou a venda. ID: ' . $idVendas);
+
+        return ['result' => true, 'message' => 'Venda faturada com sucesso.', 'lancamentos_id' => $idLancamento];
+    }
+
     public function getByIdCobrancas($id)
     {
         $this->db->select('vendas.*, clientes.*, clientes.email as emailCliente, lancamentos.data_vencimento, usuarios.telefone as telefone_usuario, usuarios.email as email_usuario, usuarios.nome, usuarios.nome, cobrancas.vendas_id,cobrancas.idCobranca,cobrancas.status');
@@ -291,14 +378,25 @@ class Vendas_model extends CI_Model
     {
         $this->db->select('*');
         $this->db->limit(25);
+        $this->db->where('saida', 1);
+        $this->db->group_start();
         $this->db->like('descricao', $q);
+        $this->db->or_like('codDeBarra', $q);
+        $this->db->group_end();
         $query = $this->db->get('produtos');
-        if ($query->num_rows() > 0) {
-            foreach ($query->result_array() as $row) {
-                $row_set[] = ['label' => $row['descricao'] . ' | Preço: R$ ' . $row['precoVenda'] . ' | Estoque: ' . $row['estoque'], 'estoque' => $row['estoque'], 'id' => $row['idProdutos'], 'preco' => $row['precoVenda']];
-            }
-            echo json_encode($row_set);
+        $row_set = [];
+        foreach ($query->result_array() as $row) {
+            $row_set[] = [
+                'label' => $row['descricao'] . ' | Preço: R$ ' . $row['precoVenda'] . ' | Estoque: ' . $row['estoque'],
+                'estoque' => $row['estoque'],
+                'id' => $row['idProdutos'],
+                'descricao' => $row['descricao'],
+                'codDeBarra' => $row['codDeBarra'],
+                'preco' => $row['precoVenda'],
+            ];
         }
+
+        echo json_encode($row_set);
     }
 
     public function autoCompleteCliente($q)
