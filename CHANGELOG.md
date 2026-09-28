@@ -13,6 +13,7 @@ e [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Impressao em PDF dos relatorios: grade fechada, coluna Status no relatorio de vendas e estilos compartilhados.
 - Geracao de etiquetas em lotes para respeitar o limite de HTML do mPDF, validacao de codigos de barras e abertura em nova aba.
 - Layout dos filtros de clientes, produtos e servicos no padrao das telas de OS e vendas.
+- Adequacao da tela de nova venda (variaveis --vn-*) aos temas escuros e claros do sistema.
 
 ## [4.55.0] - 2026-09-25
 
