@@ -7,6 +7,7 @@ e [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Permissao "Alterar Status em Massa" (chaves sOs/sVenda) para as listas de OS e vendas, aplicada junto de Editar.
 - Nova tela unica de venda (cliente, itens e pagamento em uma unica tela) com busca, calculo de totais e atalhos de orcamento/aprovacao.
 
 ### Fixed
