@@ -192,6 +192,13 @@
                                                     <span class="lbl"> Excluir OS</span>
                                                 </label>
                                             </td>
+                                            <td>
+                                                <label>
+                                                    <input name="sOs" class="marcar" type="checkbox" value="1" />
+                                                    <span class="lbl"> Alterar Status em Massa</span>
+                                                    <br><span style="font-size: 11px; color: #999;">select de status + faturar em massa na listagem</span>
+                                                </label>
+                                            </td>
                                         </tr>
                                         </tbody>
                                     </table>
@@ -234,6 +241,13 @@
                                                 <label>
                                                     <input name="dVenda" class="marcar" type="checkbox" value="1" />
                                                     <span class="lbl"> Excluir Venda</span>
+                                                </label>
+                                            </td>
+                                            <td>
+                                                <label>
+                                                    <input name="sVenda" class="marcar" type="checkbox" value="1" />
+                                                    <span class="lbl"> Alterar Status em Massa</span>
+                                                    <br><span style="font-size: 11px; color: #999;">select de status + faturar em massa na listagem</span>
                                                 </label>
                                             </td>
                                         </tr>

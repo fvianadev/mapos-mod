@@ -372,6 +372,17 @@
                                             <span class="lbl"> Excluir OS</span>
                                         </label>
                                     </td>
+                                    <td>
+                                        <label>
+                                            <input <?php if (isset($permissoes['sOs'])) {
+                                                if ($permissoes['sOs'] == '1') {
+                                                    echo 'checked';
+                                                }
+                                            }?> name="sOs" class="marcar" type="checkbox" value="1" />
+                                            <span class="lbl"> Alterar Status em Massa</span>
+                                            <br><span style="font-size: 11px; color: #999;">select de status + faturar em massa na listagem</span>
+                                        </label>
+                                    </td>
                                 </tr>
                             </table>
                         </div>
@@ -433,6 +444,17 @@
                                                 }
                                             }?> name="dVenda" class="marcar" type="checkbox" value="1" />
                                             <span class="lbl"> Excluir Venda</span>
+                                        </label>
+                                    </td>
+                                    <td>
+                                        <label>
+                                            <input <?php if (isset($permissoes['sVenda'])) {
+                                                if ($permissoes['sVenda'] == '1') {
+                                                    echo 'checked';
+                                                }
+                                            }?> name="sVenda" class="marcar" type="checkbox" value="1" />
+                                            <span class="lbl"> Alterar Status em Massa</span>
+                                            <br><span style="font-size: 11px; color: #999;">select de status + faturar em massa na listagem</span>
                                         </label>
                                     </td>
                                 </tr>

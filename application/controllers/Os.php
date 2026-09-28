@@ -1063,8 +1063,9 @@ class Os extends MY_Controller
 
     public function atualizarStatusEmMassa()
     {
-        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eOs')) {
-            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para editar O.S.']);
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eOs')
+            || ! $this->permission->checkPermission($this->session->userdata('permissao'), 'sOs')) {
+            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para alterar o status das O.S. em massa.']);
             exit();
         }
 
@@ -1178,8 +1179,9 @@ class Os extends MY_Controller
 
     public function faturarEmMassa()
     {
-        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eOs')) {
-            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para editar O.S.']);
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eOs')
+            || ! $this->permission->checkPermission($this->session->userdata('permissao'), 'sOs')) {
+            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para faturar O.S. em massa.']);
             exit();
         }
 

@@ -55,7 +55,10 @@
         </form>
     </div>
 
+    <?php $podeStatusMassa = $this->permission->checkPermission($this->session->userdata('permissao'), 'sVenda'); ?>
+
     <div class="row-fluid" style="margin: 10px 0 5px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <?php if ($podeStatusMassa) : ?>
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <select id="bulk-status" style="margin: 0; width: 200px;">
                 <option value="">— Status em massa —</option>
@@ -69,6 +72,8 @@
                 <span class="button__text2">Alterar status em massa</span>
             </button>
         </div>
+        <?php endif; ?>
+
         <div id="custom-search-container" style="display: flex; align-items: center; justify-content: flex-end; margin-left: auto;"></div>
     </div>
 
@@ -77,7 +82,9 @@
             <table id="tabela" class="table table-bordered">
                 <thead>
                     <tr>
+                                            <?php if ($podeStatusMassa) : ?>
                         <th style="width:20px; text-align:center"><input type="checkbox" id="check-all"></th>
+                                            <?php endif; ?>
                         <th>Nº</th>
                         <th>Cliente</th>
                         <th>Vendedor</th>
@@ -135,7 +142,9 @@
             $titleAttr = $editavel ? '' : ' title="Venda não editável"';
 
             echo '<tr>';
-            echo '<td style="text-align:center; padding:2px"><input type="checkbox" class="bulk-item" value="' . $r->idVendas . '"' . $checkboxDisabled . $titleAttr . '></td>';
+            if ($podeStatusMassa) {
+                echo '<td style="text-align:center; padding:2px"><input type="checkbox" class="bulk-item" value="' . $r->idVendas . '"' . $checkboxDisabled . $titleAttr . '></td>';
+            }
             echo '<td>' . $r->idVendas . '</td>';
             echo '<td><a href="' . base_url() . 'index.php/clientes/visualizar/' . $r->idClientes . '">' . $r->nomeCliente . '</a></td>';
             echo '<td class="ph1">' . $r->nome . '</td>';
@@ -269,10 +278,11 @@
 
         var statusFiltro = new URLSearchParams(window.location.search).get('status') || '';
         var temFiltro = statusFiltro !== '';
+        var podeStatusMassa = <?= $podeStatusMassa ? 'true' : 'false' ?>;
 
-        if (!temFiltro) {
+        if (!temFiltro || !podeStatusMassa) {
             $('#check-all').prop('disabled', true)
-                           .attr('title', 'Filtre por um status para usar seleção em massa');
+                           .attr('title', podeStatusMassa ? 'Filtre por um status para usar seleção em massa' : 'Você não tem permissão para alterar status em massa');
         }
 
         $('#check-all').on('click', function() {

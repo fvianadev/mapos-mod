@@ -848,8 +848,9 @@ class Vendas extends MY_Controller
 
     public function atualizarStatusEmMassa()
     {
-        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')) {
-            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para editar Vendas.']);
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')
+            || ! $this->permission->checkPermission($this->session->userdata('permissao'), 'sVenda')) {
+            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para alterar o status das vendas em massa.']);
             exit();
         }
 
@@ -930,8 +931,9 @@ class Vendas extends MY_Controller
 
     public function faturarEmMassa()
     {
-        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')) {
-            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para editar Vendas.']);
+        if (! $this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')
+            || ! $this->permission->checkPermission($this->session->userdata('permissao'), 'sVenda')) {
+            echo json_encode(['result' => false, 'message' => 'Você não tem permissão para faturar vendas em massa.']);
             exit();
         }
 

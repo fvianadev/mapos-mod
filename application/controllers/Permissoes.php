@@ -75,11 +75,13 @@ class Permissoes extends MY_Controller
                 'eOs' => $this->input->post('eOs'),
                 'dOs' => $this->input->post('dOs'),
                 'vOs' => $this->input->post('vOs'),
+                'sOs' => $this->input->post('sOs'),
 
                 'aVenda' => $this->input->post('aVenda'),
                 'eVenda' => $this->input->post('eVenda'),
                 'dVenda' => $this->input->post('dVenda'),
                 'vVenda' => $this->input->post('vVenda'),
+                'sVenda' => $this->input->post('sVenda'),
 
                 'aGarantia' => $this->input->post('aGarantia'),
                 'eGarantia' => $this->input->post('eGarantia'),
@@ -176,11 +178,13 @@ class Permissoes extends MY_Controller
                 'eOs' => $this->input->post('eOs'),
                 'dOs' => $this->input->post('dOs'),
                 'vOs' => $this->input->post('vOs'),
+                'sOs' => $this->input->post('sOs'),
 
                 'aVenda' => $this->input->post('aVenda'),
                 'eVenda' => $this->input->post('eVenda'),
                 'dVenda' => $this->input->post('dVenda'),
                 'vVenda' => $this->input->post('vVenda'),
+                'sVenda' => $this->input->post('sVenda'),
 
                 'aGarantia' => $this->input->post('aGarantia'),
                 'eGarantia' => $this->input->post('eGarantia'),
