@@ -681,3 +681,41 @@ textarea, .uneditable-input {
         background: #291a57;
     }
 }
+
+/* === Nova venda (.vn-page) === */
+body .vn-page {
+  --vn-primary       : #7b4ef4;
+  --vn-primary-soft  : rgba(123, 78, 244, .18);
+  --vn-success       : #4cc3c3;
+  --vn-success-soft  : rgba(76, 195, 195, .15);
+  --vn-border        : #3b2d70;
+  --vn-border-strong : #4b3c86;
+  --vn-muted         : #a99ccb;
+  --vn-text          : #ece9f6;
+  --vn-danger        : #ff6988;
+  --vn-danger-soft   : rgba(255, 105, 136, .15);
+  --vn-card          : #211546;
+  --vn-card-head     : #25194e;
+  --vn-surface       : #2a1e55;
+  --vn-surface-2     : #302261;
+  --vn-line          : #372a66;
+  --vn-focus         : #8b6ef8;
+  --vn-ring          : rgba(123, 78, 244, .32);
+  --vn-ring-soft     : rgba(123, 78, 244, .24);
+  --vn-outline       : #6a45d6;
+  --vn-warning       : #ffc359;
+  --vn-primary-line  : rgba(123, 78, 244, .5);
+  --vn-primary-line-2: rgba(123, 78, 244, .35);
+  --vn-success-line  : rgba(76, 195, 195, .4);
+  --vn-success-text  : #6ad3d3;
+  --vn-warn-bg       : rgba(255, 195, 89, .13);
+  --vn-warn-line     : rgba(255, 195, 89, .38);
+  --vn-warn-text     : #ffd28a;
+  --vn-error-bg      : rgba(255, 105, 136, .13);
+  --vn-error-line    : rgba(255, 105, 136, .38);
+  --vn-error-text    : #ff92a9;
+  --vn-shadow        : 0 1px 2px rgba(0, 0, 0, .45), 0 8px 24px rgba(0, 0, 0, .4);
+  --vn-shadow-inset  : inset 0 1px 1px rgba(0, 0, 0, .4);
+  --vn-shadow-tab    : 0 1px 2px rgba(0, 0, 0, .5);
+  --vn-gradient-resumo: linear-gradient(180deg, #25194e 0%, #1f1442 100%);
+}

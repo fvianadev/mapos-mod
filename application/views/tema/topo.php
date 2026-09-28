@@ -15,22 +15,22 @@
   <link href="<?= base_url(); ?>assets/font-awesome/css/font-awesome.css" rel="stylesheet" />
   <link rel="stylesheet" href="<?= base_url(); ?>assets/css/fullcalendar.css" />
   <?php if ($configuration['app_theme'] == 'white') { ?>
-    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-white.css" />
+    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-white.css?v=<?php echo (int) @filemtime(FCPATH . 'assets/css/tema-white.css'); ?>" />
   <?php } ?>
   <?php if ($configuration['app_theme'] == 'puredark') { ?>
-    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-pure-dark.css" />
+    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-pure-dark.css?v=<?php echo (int) @filemtime(FCPATH . 'assets/css/tema-pure-dark.css'); ?>" />
   <?php } ?>
   <?php if ($configuration['app_theme'] == 'darkviolet') { ?>
-    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-dark-violet.css" />
+    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-dark-violet.css?v=<?php echo (int) @filemtime(FCPATH . 'assets/css/tema-dark-violet.css'); ?>" />
   <?php } ?>
   <?php if ($configuration['app_theme'] == 'darkorange') { ?>
-    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-dark-orange.css" />
+    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-dark-orange.css?v=<?php echo (int) @filemtime(FCPATH . 'assets/css/tema-dark-orange.css'); ?>" />
   <?php } ?>
   <?php if ($configuration['app_theme'] == 'whitegreen') { ?>
-    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-white-green.css" />
+    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-white-green.css?v=<?php echo (int) @filemtime(FCPATH . 'assets/css/tema-white-green.css'); ?>" />
   <?php } ?>
   <?php if ($configuration['app_theme'] == 'whiteblack') { ?>
-    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-white-black.css" />
+    <link rel="stylesheet" href="<?= base_url(); ?>assets/css/tema-white-black.css?v=<?php echo (int) @filemtime(FCPATH . 'assets/css/tema-white-black.css'); ?>" />
   <?php } ?>
   <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700,800' rel='stylesheet' type='text/css'>
   <link href='https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;500;700&display=swap' rel='stylesheet' type='text/css'>
