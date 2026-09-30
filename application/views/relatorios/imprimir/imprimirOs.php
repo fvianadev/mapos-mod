@@ -60,7 +60,15 @@
                                         <td><?= html_escape((string) $c->nomeCliente) ?: '-' ?></td>
                                         <td class="ctr"><?= html_escape((string) $c->status) ?: '-' ?></td>
                                         <td class="ctr"><?= $tsData ? date('d/m/Y', $tsData) : '-' ?></td>
-                                        <td><?= html_escape((string) $c->descricaoProduto) ?: '-' ?></td>
+                                        <?php
+                                        // descricaoProduto vem do editor rich-text (trumbowyg) com <p>/<ul>;
+                                        // sem tratar, o mPDF imprimiria as tags literalmente.
+                                        $descricao = html_entity_decode((string) $c->descricaoProduto, ENT_QUOTES, 'UTF-8');
+                                        $descricao = preg_replace('/<\s*br\s*\/?\s*>/i', ' ', $descricao);
+                                        $descricao = preg_replace('/<\/\s*(p|li|div|tr|h[1-6])\s*>/i', ' ', $descricao);
+                                        $descricao = trim(preg_replace('/\s+/u', ' ', strip_tags($descricao)));
+                                        ?>
+                                        <td><?= html_escape($descricao) ?: '-' ?></td>
                                         <td class="num">R$ <?= number_format((float) $c->total_produto, 2, ',', '.') ?></td>
                                         <td class="num">R$ <?= number_format((float) $c->total_servico, 2, ',', '.') ?></td>
                                         <td class="num">R$ <?= number_format((float) $c->total_produto + (float) $c->total_servico, 2, ',', '.') ?></td>
