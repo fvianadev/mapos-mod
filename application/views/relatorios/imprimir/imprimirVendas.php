@@ -26,26 +26,17 @@
                         }
                         ?>
                         <table class="rel-table">
-                            <colgroup>
-                                <col style="width: 6%" />
-                                <col style="width: 34%" />
-                                <col style="width: 13%" />
-                                <col style="width: 9%" />
-                                <col style="width: 10%" />
-                                <col style="width: 10%" />
-                                <col style="width: 10%" />
-                                <col style="width: 8%" />
-                            </colgroup>
+                            <?php
+                            // O mPDF ignora <colgroup> e table-layout:fixed; as larguras
+                            // precisam ir em <th> para valerem no PDF.
+                            $largurasColunas = [6, 25, 12, 9, 11, 11, 11, 15];
+                            $titulosColunas = ['#', 'Cliente', 'Vendedor', 'Status', 'Data', 'Total', 'Desconto', 'Total Com Desconto'];
+                            ?>
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Cliente</th>
-                                    <th>Vendedor</th>
-                                    <th>Status</th>
-                                    <th>Data</th>
-                                    <th>Total</th>
-                                    <th>Desconto</th>
-                                    <th>Total Com Desconto</th>
+                                    <?php foreach ($titulosColunas as $iTitulo => $titulo) : ?>
+                                        <th style="width: <?= (int) $largurasColunas[$iTitulo] ?>%"><?= html_escape($titulo) ?></th>
+                                    <?php endforeach ?>
                                 </tr>
                             </thead>
                             <tbody>
