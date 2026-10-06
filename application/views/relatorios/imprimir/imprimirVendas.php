@@ -21,17 +21,17 @@
                     <div class="widget_content nopadding">
                         <?php
                         $sum = 0;
-                        foreach ($vendas as $v) {
-                            $sum += $v->valor_desconto != 0 ? $v->valor_desconto : $v->valorTotal;
-                        }
-                        ?>
+    foreach ($vendas as $v) {
+        $sum += $v->valor_desconto != 0 ? $v->valor_desconto : $v->valorTotal;
+    }
+    ?>
                         <table class="rel-table">
                             <?php
-                            // O mPDF ignora <colgroup> e table-layout:fixed; as larguras
-                            // precisam ir em <th> para valerem no PDF.
-                            $largurasColunas = [6, 25, 12, 9, 11, 11, 11, 15];
-                            $titulosColunas = ['#', 'Cliente', 'Vendedor', 'Status', 'Data', 'Total', 'Desconto', 'Total Com Desconto'];
-                            ?>
+        // O mPDF ignora <colgroup> e table-layout:fixed; as larguras
+        // precisam ir em <th> para valerem no PDF.
+        $largurasColunas = [6, 25, 12, 9, 11, 11, 11, 15];
+    $titulosColunas = ['#', 'Cliente', 'Vendedor', 'Status', 'Data', 'Total', 'Desconto', 'Total Com Desconto'];
+    ?>
                             <thead>
                                 <tr>
                                     <?php foreach ($titulosColunas as $iTitulo => $titulo) : ?>
