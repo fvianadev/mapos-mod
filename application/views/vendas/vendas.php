@@ -106,88 +106,104 @@
                                     <td colspan="13">Nenhuma Venda Cadastrada</td>
                                 </tr>';
                         }
-        foreach ($results as $r) {
-            $dataVenda = date(('d/m/Y'), strtotime($r->dataVenda));
-            $vencGarantia = '';
+foreach ($results as $r) {
+    $dataVenda = date(('d/m/Y'), strtotime($r->dataVenda));
+    $vencGarantia = '';
                             
-            if ($r->garantia && is_numeric($r->garantia)) {
-                $vencGarantia = dateInterval($r->dataVenda, $r->garantia);
-            }
-            $corGarantia = '';
-            if (!empty($vencGarantia)) {
-                $dataGarantia = explode('/', $vencGarantia);
-                $dataGarantiaFormatada = $dataGarantia[2] . '-' . $dataGarantia[1] . '-' . $dataGarantia[0];
-                $corGarantia = (strtotime($dataGarantiaFormatada) >= strtotime(date('d-m-Y'))) ? '#4d9c79' : '#f24c6f';
-            } elseif ($r->garantia == "0") {
-                $vencGarantia = 'Sem Garantia';
-            }
+    if ($r->garantia && is_numeric($r->garantia)) {
+        $vencGarantia = dateInterval($r->dataVenda, $r->garantia);
+    }
+    $corGarantia = '';
+    if (!empty($vencGarantia)) {
+        $dataGarantia = explode('/', $vencGarantia);
+        $dataGarantiaFormatada = $dataGarantia[2] . '-' . $dataGarantia[1] . '-' . $dataGarantia[0];
+        $corGarantia = (strtotime($dataGarantiaFormatada) >= strtotime(date('d-m-Y'))) ? '#4d9c79' : '#f24c6f';
+    } elseif ($r->garantia == "0") {
+        $vencGarantia = 'Sem Garantia';
+    }
 
-            $faturado = ($r->faturado == 1) ? 'Sim' : 'Não';
-            $corStatus = match($r->status) {
-                'Orçamento' => '#f0ad4e',
-                'Aprovado' => '#337ab7',
-                'Faturado' => '#28a745',
-                'Cancelado' => '#dc3545',
-                'Aberto' => '#00cd00',
-                'Em Andamento' => '#436eee',
-                'Negociação' => '#AEB404',
-                'Finalizado' => '#256',
-                'Aguardando Peças' => '#FF7F00',
-                default => '#E0E4CC',
-            };
+    $faturado = ($r->faturado == 1) ? 'Sim' : 'Não';
+    $corStatus = match($r->status) {
+        'Orçamento' => '#f0ad4e',
+        'Aprovado' => '#337ab7',
+        'Faturado' => '#28a745',
+        'Cancelado' => '#dc3545',
+        'Aberto' => '#00cd00',
+        'Em Andamento' => '#436eee',
+        'Negociação' => '#AEB404',
+        'Finalizado' => '#256',
+        'Aguardando Peças' => '#FF7F00',
+        default => '#E0E4CC',
+    };
 
-            $editavel = $this->vendas_model->isEditable($r->idVendas);
+    $editavel = $this->vendas_model->isEditable($r->idVendas);
 
-            $checkboxDisabled = $editavel ? '' : ' disabled';
-            $titleAttr = $editavel ? '' : ' title="Venda não editável"';
+    $checkboxDisabled = $editavel ? '' : ' disabled';
+    $titleAttr = $editavel ? '' : ' title="Venda não editável"';
 
-            echo '<tr>';
-            if ($podeStatusMassa) {
-                echo '<td style="text-align:center; padding:2px"><input type="checkbox" class="bulk-item" value="' . $r->idVendas . '"' . $checkboxDisabled . $titleAttr . '></td>';
-            }
-            echo '<td>' . $r->idVendas . '</td>';
-            echo '<td><a href="' . base_url() . 'index.php/clientes/visualizar/' . $r->idClientes . '">' . $r->nomeCliente . '</a></td>';
-            echo '<td class="ph1">' . $r->nome . '</td>';
-            echo '<td>' . $dataVenda . '</td>';
-            echo '<td class="ph3"><span class="badge" style="background-color: ' . $corGarantia . '; border-color: ' . $corGarantia . '">' . $vencGarantia . '</span> </td>';
+    $brutoVenda = (float) ($r->totalProdutos ?? 0);
+    $descontoVenda = (float) ($r->desconto ?? 0);
+    if (($r->tipo_desconto ?? '') === 'porcento') {
+        $descontoVenda = $brutoVenda * ($descontoVenda / 100);
+    }
+    $descontoVenda = round(min($brutoVenda, max(0, $descontoVenda)), 2);
+    $liquidoVenda = round($brutoVenda - $descontoVenda, 2);
+    $vendaPulaFaturamento = ($r->faturado == 1 || $r->status === 'Cancelado') ? 1 : 0;
 
-            if ($r->faturado == 1) {
-                echo '<td>R$ ' . number_format($r->valorTotal, 2, ',', '.') . '</td>';
-                echo '<td>R$ ' . number_format($r->desconto, 2, ',', '.') . '</td>';
-                echo '<td>R$ ' . number_format($r->valor_desconto, 2, ',', '.') . '</td>';
-                echo '<td>R$ ' . number_format($r->valor_desconto, 2, ',', '.') . '</td>';
-            } else {
-                $valorProdutos = isset($r->totalProdutos) ? $r->totalProdutos : 0.00;
-                $desconto = isset($r->desconto) ? $r->desconto : 0.00;
-                $valorComDesconto = $valorProdutos - $desconto;
-                            
-                echo '<td>R$ ' . number_format($valorProdutos, 2, ',', '.') . '</td>';
-                echo '<td>R$ ' . number_format($desconto, 2, ',', '.') . '</td>';
-                echo '<td>R$ ' . number_format($valorComDesconto, 2, ',', '.') . '</td>';
-                echo '<td>R$ 0,00</td>';
-            }
+    $attrBulk = ' data-bruto="' . number_format($brutoVenda, 2, '.', '')
+        . '" data-desconto="' . number_format($descontoVenda, 2, '.', '')
+        . '" data-liquido="' . number_format($liquidoVenda, 2, '.', '')
+        . '" data-pula="' . $vendaPulaFaturamento . '"';
 
-            echo '<td><span class="badge" style="background-color: ' . $corStatus . '; border-color: ' . $corStatus . '">' . $r->status . '</span> </td>';
-            echo '<td>' . $faturado . '</td>';
-            echo '<td style="text-align:left">';
+    echo '<tr>';
+    if ($podeStatusMassa) {
+        echo '<td style="text-align:center; padding:2px"><input type="checkbox" class="bulk-item" value="' . $r->idVendas . '"' . $attrBulk . $checkboxDisabled . $titleAttr . '></td>';
+    }
+    echo '<td>' . $r->idVendas . '</td>';
+    echo '<td><a href="' . base_url() . 'index.php/clientes/visualizar/' . $r->idClientes . '">' . $r->nomeCliente . '</a></td>';
+    echo '<td class="ph1">' . $r->nome . '</td>';
+    echo '<td>' . $dataVenda . '</td>';
+    echo '<td class="ph3"><span class="badge" style="background-color: ' . $corGarantia . '; border-color: ' . $corGarantia . '">' . $vencGarantia . '</span> </td>';
 
-            if ($this->permission->checkPermission($this->session->userdata('permissao'), 'vVenda')) {
-                echo '<a style="margin-right: 1%" href="' . base_url() . 'index.php/vendas/visualizar/' . $r->idVendas . '" class="btn-nwe" title="Ver mais detalhes"><i class="bx bx-show bx-xs"></i></a>';
-                echo '<a style="margin-right: 1%" href="' . base_url() . 'index.php/vendas/imprimir/' . $r->idVendas . '" target="_blank" class="btn-nwe6" title="Imprimir A4"><i class="bx bx-printer bx-xs"></i></a>';
-                echo '<a style="margin-right: 1%" href="' . base_url() . 'index.php/vendas/imprimirTermica/' . $r->idVendas . '" target="_blank" class="btn-nwe6" title="Imprimir Não Fiscal"><i class="bx bx-printer bx-xs"></i></a>';
-            }
+    if ($r->faturado == 1) {
+        $brutoFaturado = (float) $r->valorTotal;
+        $liquidoFaturado = (float) $r->valor_desconto;
+        $descontoFaturado = round(max(0, $brutoFaturado - $liquidoFaturado), 2);
+        echo '<td>R$ ' . number_format($brutoFaturado, 2, ',', '.') . '</td>';
+        echo '<td>R$ ' . number_format($descontoFaturado, 2, ',', '.') . '</td>';
+        echo '<td>R$ ' . number_format($liquidoFaturado, 2, ',', '.') . '</td>';
+        echo '<td>R$ ' . number_format($liquidoFaturado, 2, ',', '.') . '</td>';
+    } else {
+        $valorProdutos = isset($r->totalProdutos) ? $r->totalProdutos : 0.00;
+        $desconto = $descontoVenda;
 
-            if ($r->faturado != 1 || $editavel) {
-                if ($this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')) {
-                    echo '<a style="margin-right: 1%" href="' . base_url() . 'index.php/vendas/editar/' . $r->idVendas . '" class="btn-nwe3" title="Editar venda"><i class="bx bx-edit bx-xs"></i></a>';
-                }
-                if ($this->permission->checkPermission($this->session->userdata('permissao'), 'dVenda')) {
-                    echo '<a href="#modal-excluir" role="button" data-toggle="modal" venda="' . $r->idVendas . '" class="btn-nwe4" title="Excluir Venda"><i class="bx bx-trash-alt bx-xs"></i></a>';
-                }
-            }
-            echo '</td>';
-            echo '</tr>';
-        } ?>
+        echo '<td>R$ ' . number_format($valorProdutos, 2, ',', '.') . '</td>';
+        echo '<td>R$ ' . number_format($desconto, 2, ',', '.') . '</td>';
+        echo '<td>R$ ' . number_format(round($valorProdutos - $desconto, 2), 2, ',', '.') . '</td>';
+        echo '<td>R$ 0,00</td>';
+    }
+
+    echo '<td><span class="badge" style="background-color: ' . $corStatus . '; border-color: ' . $corStatus . '">' . $r->status . '</span> </td>';
+    echo '<td>' . $faturado . '</td>';
+    echo '<td style="text-align:left">';
+
+    if ($this->permission->checkPermission($this->session->userdata('permissao'), 'vVenda')) {
+        echo '<a style="margin-right: 1%" href="' . base_url() . 'index.php/vendas/visualizar/' . $r->idVendas . '" class="btn-nwe" title="Ver mais detalhes"><i class="bx bx-show bx-xs"></i></a>';
+        echo '<a style="margin-right: 1%" href="' . base_url() . 'index.php/vendas/imprimir/' . $r->idVendas . '" target="_blank" class="btn-nwe6" title="Imprimir A4"><i class="bx bx-printer bx-xs"></i></a>';
+        echo '<a style="margin-right: 1%" href="' . base_url() . 'index.php/vendas/imprimirTermica/' . $r->idVendas . '" target="_blank" class="btn-nwe6" title="Imprimir Não Fiscal"><i class="bx bx-printer bx-xs"></i></a>';
+    }
+
+    if ($r->faturado != 1 || $editavel) {
+        if ($this->permission->checkPermission($this->session->userdata('permissao'), 'eVenda')) {
+            echo '<a style="margin-right: 1%" href="' . base_url() . 'index.php/vendas/editar/' . $r->idVendas . '" class="btn-nwe3" title="Editar venda"><i class="bx bx-edit bx-xs"></i></a>';
+        }
+        if ($this->permission->checkPermission($this->session->userdata('permissao'), 'dVenda')) {
+            echo '<a href="#modal-excluir" role="button" data-toggle="modal" venda="' . $r->idVendas . '" class="btn-nwe4" title="Excluir Venda"><i class="bx bx-trash-alt bx-xs"></i></a>';
+        }
+    }
+    echo '</td>';
+    echo '</tr>';
+} ?>
                 </tbody>
             </table>
         </div>
@@ -223,37 +239,60 @@
                 <h4 class="modal-title">Faturar Vendas em Massa</h4>
             </div>
             <div class="modal-body">
-                <div class="span12 alert alert-info" style="margin-left: 0">
+                <div class="alert alert-info" style="margin: 0 0 10px">
                     Vendas selecionadas: <strong id="qtd-vendas-faturar">0</strong>
                 </div>
-                <div class="span12" style="margin-left: 0">
-                    <div class="span6" style="margin-left: 0">
-                        <label for="fm-vencimento">Data Entrada *</label>
-                        <input class="span12 datepicker" autocomplete="off" id="fm-vencimento" type="text" name="fm-vencimento" value="<?= date('d/m/Y') ?>" />
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-start;">
+                    <div style="flex: 1 1 48%; min-width: 200px;">
+                        <div style="margin-bottom: 10px;">
+                            <label for="fm-vencimento">Data Entrada *</label>
+                            <input class="datepicker" autocomplete="off" id="fm-vencimento" type="text" name="fm-vencimento" value="<?= date('d/m/Y') ?>" style="width: 100%; box-sizing: border-box; margin-left: 0;" />
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <label for="fm-recebido">Foi Recebido?</label>
+                            &nbsp;&nbsp;<input id="fm-recebido" type="checkbox" name="fm-recebido" value="1" />
+                        </div>
+                        <div id="fm-divRecebimento" style="display: none;">
+                            <div style="margin-bottom: 10px;">
+                                <label for="fm-recebimento">Data Recebimento</label>
+                                <input class="datepicker" autocomplete="off" id="fm-recebimento" type="text" name="fm-recebimento" value="<?= date('d/m/Y') ?>" style="width: 100%; box-sizing: border-box; margin-left: 0;" />
+                            </div>
+                            <div>
+                                <label for="fm-formaPgto">Forma Pgto *</label>
+                                <select name="fm-formaPgto" id="fm-formaPgto" style="width: 100%; box-sizing: border-box; margin-left: 0;">
+                                    <option value="Dinheiro">Dinheiro</option>
+                                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                    <option value="Cartão de Débito">Cartão de Débito</option>
+                                    <option value="Boleto">Boleto</option>
+                                    <option value="Depósito">Depósito</option>
+                                    <option value="Pix">Pix</option>
+                                    <option value="Cheque">Cheque</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="span12" style="margin-left: 0">
-                    <div class="span6" style="margin-left: 0">
-                        <label for="fm-recebido">Foi Recebido?</label>
-                        &nbsp;&nbsp;<input id="fm-recebido" type="checkbox" name="fm-recebido" value="1" />
-                    </div>
-                </div>
-                <div id="fm-divRecebimento" class="span12" style="margin-left: 0; display: none;">
-                    <div class="span6" style="margin-left: 0">
-                        <label for="fm-recebimento">Data Recebimento</label>
-                        <input class="span12 datepicker" autocomplete="off" id="fm-recebimento" type="text" name="fm-recebimento" value="<?= date('d/m/Y') ?>" />
-                    </div>
-                    <div class="span6">
-                        <label for="fm-formaPgto">Forma Pgto *</label>
-                        <select name="fm-formaPgto" id="fm-formaPgto" class="span12">
-                            <option value="Dinheiro">Dinheiro</option>
-                            <option value="Cartão de Crédito">Cartão de Crédito</option>
-                            <option value="Cartão de Débito">Cartão de Débito</option>
-                            <option value="Boleto">Boleto</option>
-                            <option value="Depósito">Depósito</option>
-                            <option value="Pix">Pix</option>
-                            <option value="Cheque">Cheque</option>
-                        </select>
+                    <div id="fm-resumo" style="flex: 1 1 44%; min-width: 190px; background: #f7f9fc; border: 1px solid #d9e1ec; border-radius: 4px; padding: 10px 12px; font-size: 13px;">
+                        <div style="font-weight: 700; margin-bottom: 8px;">Resumo do faturamento</div>
+                        <div style="display: flex; justify-content: space-between; padding: 3px 0;">
+                            <span>Tipo</span><strong>Venda</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 3px 0;">
+                            <span>Selecionadas</span><strong id="fm-res-selecionadas">0</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 3px 0;">
+                            <span>A faturar</span><strong id="fm-res-afaturar">0</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 3px 0;">
+                            <span>Valor bruto</span><strong id="fm-res-bruto">R$ 0,00</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 3px 0;">
+                            <span>Desconto</span><strong id="fm-res-desconto">R$ 0,00</strong>
+                        </div>
+                        <div style="border-top: 1px solid #d9e1ec; margin: 5px 0; padding-top: 6px; display: flex; justify-content: space-between; font-size: 14px;">
+                            <span>Total a faturar</span><strong id="fm-res-total">R$ 0,00</strong>
+                        </div>
+                        <div id="fm-res-puladas" style="display: none; color: #b07d1a; padding-top: 4px;"></div>
+                        <div style="color: #6b7785; padding-top: 6px;">Cada venda gera uma receita no Financeiro.</div>
                     </div>
                 </div>
             </div>
@@ -288,11 +327,53 @@
         $('#check-all').on('click', function() {
             $('.bulk-item:not(:disabled)').prop('checked', this.checked);
             toggleBulkButton();
+            atualizarResumoFaturamento();
         });
 
         $(document).on('change', '.bulk-item', function() {
             toggleBulkButton();
+            atualizarResumoFaturamento();
         });
+
+        function brl(valor) {
+            return 'R$ ' + (Number(valor) || 0).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function atualizarResumoFaturamento() {
+            var selecionadas = 0;
+            var afaturar = 0;
+            var puladas = 0;
+            var bruto = 0;
+            var desconto = 0;
+            var liquido = 0;
+
+            $('.bulk-item:checked').each(function() {
+                selecionadas++;
+                if (Number($(this).attr('data-pula')) === 1) {
+                    puladas++;
+                    return;
+                }
+                afaturar++;
+                bruto += Number($(this).attr('data-bruto')) || 0;
+                desconto += Number($(this).attr('data-desconto')) || 0;
+                liquido += Number($(this).attr('data-liquido')) || 0;
+            });
+
+            $('#fm-res-selecionadas').text(selecionadas);
+            $('#fm-res-afaturar').text(afaturar);
+            $('#fm-res-bruto').text(brl(bruto));
+            $('#fm-res-desconto').text(brl(desconto));
+            $('#fm-res-total').text(brl(liquido));
+
+            if (puladas > 0) {
+                $('#fm-res-puladas').text(puladas + ' venda(s) já faturada(s)/cancelada(s) serão pulada(s).').show();
+            } else {
+                $('#fm-res-puladas').hide();
+            }
+        }
 
         function toggleBulkButton() {
             var checked = $('.bulk-item:checked').length;
@@ -313,6 +394,7 @@
 
             if (status === 'Faturado') {
                 $('#qtd-vendas-faturar').text(ids.length);
+                atualizarResumoFaturamento();
                 $('#modal-faturar-massa').modal('show');
                 return;
             }
@@ -407,15 +489,15 @@
                     $('#modal-faturar-massa').modal('hide');
                     if (data.result) {
                         Swal.fire({
-                            type: 'success',
+                            icon: 'success',
                             title: 'Sucesso',
-                            text: data.message
+                            html: montarResumoSucesso(data)
                         }).then(function() {
                             location.reload();
                         });
                     } else {
                         Swal.fire({
-                            type: 'error',
+                            icon: 'error',
                             title: 'Erro',
                             text: data.message
                         });
@@ -424,12 +506,29 @@
                 error: function(xhr, status, error) {
                     $('#modal-faturar-massa').modal('hide');
                     Swal.fire({
-                        type: 'error',
+                        icon: 'error',
                         title: 'Erro HTTP',
                         text: 'Status: ' + status + ' - ' + error
                     });
                 }
             });
         });
+
+        function montarResumoSucesso(data) {
+            var html = '<div style="text-align:left;font-size:14px;">' +
+                '<div style="margin-bottom:8px;">' + $('<div>').text(data.message).html() + '</div>';
+
+            if (data.resumo) {
+                html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+                    '<tr><td style="padding:3px 0;">Tipo</td><td style="text-align:right;"><strong>' + data.resumo.tipo + '</strong></td></tr>' +
+                    '<tr><td style="padding:3px 0;">Lançamentos criados</td><td style="text-align:right;"><strong>' + data.resumo.lancamentos + '</strong></td></tr>' +
+                    '<tr><td style="padding:3px 0;">Valor bruto</td><td style="text-align:right;">' + brl(data.resumo.bruto) + '</td></tr>' +
+                    '<tr><td style="padding:3px 0;">Desconto</td><td style="text-align:right;">' + brl(data.resumo.desconto) + '</td></tr>' +
+                    '<tr><td style="padding:3px 0;border-top:1px solid #ddd;">Total faturado</td><td style="text-align:right;border-top:1px solid #ddd;"><strong>' + brl(data.resumo.liquido) + '</strong></td></tr>' +
+                    '</table>';
+            }
+
+            return html + '</div>';
+        }
     });
 </script>

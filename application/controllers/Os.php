@@ -1215,11 +1215,17 @@ class Os extends MY_Controller
         $faturados = 0;
         $skipped = [];
         $enviarEmailIds = [];
+        $resumo = ['bruto' => 0.0, 'desconto' => 0.0, 'liquido' => 0.0];
 
         foreach ($ids as $id) {
             $os = $this->os_model->getById($id);
             if (! $os) {
                 $skipped[] = "OS #{$id} (não encontrada)";
+                continue;
+            }
+
+            if ((int) $os->faturado === 1 || $os->status === 'Faturado' || $os->status === 'Cancelado') {
+                $skipped[] = "OS #{$id} (já faturada ou cancelada)";
                 continue;
             }
 
@@ -1239,6 +1245,9 @@ class Os extends MY_Controller
 
             if ($result['success']) {
                 $faturados++;
+                $resumo['bruto'] += (float) ($result['valorTotal'] ?? 0);
+                $resumo['desconto'] += (float) ($result['desconto'] ?? 0);
+                $resumo['liquido'] += (float) ($result['valor_desconto'] ?? 0);
                 log_info('Faturou OS em massa. ID: ' . $id);
                 $enviarEmailIds[] = $id;
             } else {
@@ -1289,7 +1298,20 @@ class Os extends MY_Controller
             $message .= " Pulada(s): " . implode(', ', $skipped);
         }
 
-        echo json_encode(['result' => true, 'updated' => $faturados, 'skipped' => $skipped, 'message' => $message]);
+        echo json_encode([
+            'result' => true,
+            'updated' => $faturados,
+            'skipped' => $skipped,
+            'message' => $message,
+            'resumo' => [
+                'tipo' => 'OS',
+                'quantidade' => $faturados,
+                'lancamentos' => $faturados,
+                'bruto' => round($resumo['bruto'], 2),
+                'desconto' => round($resumo['desconto'], 2),
+                'liquido' => round($resumo['liquido'], 2),
+            ],
+        ]);
         exit();
     }
 

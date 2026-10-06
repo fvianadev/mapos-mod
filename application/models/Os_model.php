@@ -421,6 +421,11 @@ class Os_model extends CI_Model
 
         $this->edit('os', $osUpdate, 'idOs', $osId);
 
-        return ['success' => true, 'valorTotal' => $valorTotal];
+        return [
+            'success' => true,
+            'valorTotal' => $valorTotal,
+            'desconto' => (float) $lancamentoData['desconto'],
+            'valor_desconto' => (float) $lancamentoData['valor_desconto'],
+        ];
     }
 }

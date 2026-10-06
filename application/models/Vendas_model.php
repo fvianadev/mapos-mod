@@ -296,7 +296,14 @@ class Vendas_model extends CI_Model
 
         log_info('Faturou a venda. ID: ' . $idVendas);
 
-        return ['result' => true, 'message' => 'Venda faturada com sucesso.', 'lancamentos_id' => $idLancamento];
+        return [
+            'result' => true,
+            'message' => 'Venda faturada com sucesso.',
+            'lancamentos_id' => $idLancamento,
+            'valor' => (float) $subtotal,
+            'desconto' => (float) $desconto,
+            'valor_desconto' => (float) $liquido,
+        ];
     }
 
     public function getByIdCobrancas($id)
