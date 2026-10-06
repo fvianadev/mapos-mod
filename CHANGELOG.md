@@ -9,12 +9,15 @@ e [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - Permissao "Alterar Status em Massa" (chaves sOs/sVenda) para as listas de OS e vendas, aplicada junto de Editar.
 - Nova tela unica de venda (cliente, itens e pagamento em uma unica tela) com busca, calculo de totais e atalhos de orcamento/aprovacao.
+- Faturamento em massa de OS e vendas com painel de resumo no modal (tipo, selecionadas, valor bruto, desconto e total) e tabela de resumo no alerta de sucesso, mostrando os lancamentos financeiros que serao gerados.
 
 ### Fixed
 - Impressao em PDF dos relatorios: grade fechada, coluna Status no relatorio de vendas e estilos compartilhados.
 - Geracao de etiquetas em lotes para respeitar o limite de HTML do mPDF, validacao de codigos de barras e abertura em nova aba.
 - Layout dos filtros de clientes, produtos e servicos no padrao das telas de OS e vendas.
 - Adequacao da tela de nova venda (variaveis --vn-*) aos temas escuros e claros do sistema.
+- Colunas de desconto das listas de OS e vendas: aplicacao do desconto percentual e do valor com desconto quando nao ha desconto.
+- Faturamento em massa de OS ignora OS ja faturada ou cancelada, evitando lancamento financeiro duplicado.
 
 ## [4.55.0] - 2026-09-25
 
