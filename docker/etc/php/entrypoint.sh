@@ -60,27 +60,30 @@ echo "MySQL pronto."
 DB_EXISTS=$(mysql -h"${DB_HOSTNAME:-mysql}" -u"${DB_USERNAME:-mapos}" -p"${DB_PASSWORD:-mapos}" "${DB_DATABASE:-mapos}" -e "SHOW TABLES LIKE 'usuarios';" 2>/dev/null | grep -c usuarios || true)
 
 if [ "$DB_EXISTS" -eq 0 ]; then
-    echo "Banco vazio detectado. Preparando banco.sql com dados do admin..."
+    echo "Banco vazio detectado. Executando banco.sql..."
+    mysql -h"${DB_HOSTNAME:-mysql}" -u"${DB_USERNAME:-mapos}" -p"${DB_PASSWORD:-mapos}" "${DB_DATABASE:-mapos}" < /var/www/html/banco.sql
+    echo "Schema inicial criado."
 
-    # Admin config (use env vars or defaults)
-    ADMIN_NAME="${ADMIN_NAME:-Administrador}"
-    ADMIN_EMAIL="${ADMIN_EMAIL:-admin@mapos.local}"
-    ADMIN_PASSWORD="${ADMIN_PASSWORD:-mapos123}"
-    ADMIN_CREATED_AT=$(date '+%Y-%m-%d %H:%M:%S')
+    # Verifica se deve criar admin automático (variáveis definidas no docker/.env)
+    if [ -n "${ADMIN_EMAIL:-}" ] && [ -n "${ADMIN_PASSWORD:-}" ] && [ -n "${ADMIN_NAME:-}" ]; then
+        echo "Configurando admin automático..."
 
-    # Generate password hash using PHP
-    ADMIN_PASSWORD_HASH=$(php -r "echo password_hash('$ADMIN_PASSWORD', PASSWORD_DEFAULT);")
+        # Gera hash da senha usando PHP
+        ADMIN_PASSWORD_HASH=$(php -r "echo password_hash('$ADMIN_PASSWORD', PASSWORD_DEFAULT);")
+        ADMIN_CREATED_AT=$(date '+%Y-%m-%d %H:%M:%S')
 
-    # Copy banco.sql and replace placeholders
-    cp /var/www/html/banco.sql /tmp/banco_custom.sql
-    sed -i "s|admin_name|${ADMIN_NAME}|g" /tmp/banco_custom.sql
-    sed -i "s|admin_email|${ADMIN_EMAIL}|g" /tmp/banco_custom.sql
-    sed -i "s|admin_password|${ADMIN_PASSWORD_HASH}|g" /tmp/banco_custom.sql
-    sed -i "s|admin_created_at|${ADMIN_CREATED_AT}|g" /tmp/banco_custom.sql
+        # Atualiza o admin dummy inserido pelo banco.sql
+        mysql -h"${DB_HOSTNAME:-mysql}" -u"${DB_USERNAME:-mapos}" -p"${DB_PASSWORD:-mapos}" "${DB_DATABASE:-mapos}" \
+            -e "UPDATE usuarios SET nome = '${ADMIN_NAME}', email = '${ADMIN_EMAIL}', senha = '${ADMIN_PASSWORD_HASH}', dataCadastro = '${ADMIN_CREATED_AT}' WHERE email = 'admin_email' OR email = 'admin@mapos.local';" 2>/dev/null || true
 
-    echo "Executando banco.sql personalizado..."
-    mysql -h"${DB_HOSTNAME:-mysql}" -u"${DB_USERNAME:-mapos}" -p"${DB_PASSWORD:-mapos}" "${DB_DATABASE:-mapos}" < /tmp/banco_custom.sql
-    echo "Schema inicial criado com admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}"
+        echo "Admin automático criado: ${ADMIN_EMAIL}"
+    else
+        # Remove admin dummy inserido pelo banco.sql (placeholders literais)
+        # Para permitir que firstAccess funcione
+        mysql -h"${DB_HOSTNAME:-mysql}" -u"${DB_USERNAME:-mapos}" -p"${DB_PASSWORD:-mapos}" "${DB_DATABASE:-mapos}" \
+            -e "DELETE FROM usuarios WHERE email = 'admin_email' OR email = 'admin@mapos.local';" 2>/dev/null || true
+        echo "Admin dummy removido. firstAccess estará disponível."
+    fi
 else
     echo "Banco já possui tabelas. Pulando banco.sql."
 fi
