@@ -18,36 +18,106 @@ chmod -R 775 /var/www/html/assets/userImage
 ENV_FILE="/var/www/html/application/.env"
 EXAMPLE_FILE="/var/www/html/application/.env.example"
 
+# Variáveis que DEVEM ser sincronizadas do container env para .env (sempre)
+SYNC_VARS=(
+    "DB_HOSTNAME"
+    "DB_USERNAME"
+    "DB_PASSWORD"
+    "DB_DATABASE"
+    "APP_BASEURL"
+    "API_ENABLED"
+    "API_TOKEN_EXPIRE_TIME"
+)
+
+# Variáveis que NÃO devem ser sobrescritas após primeira geração
+IMMUTABLE_VARS=(
+    "APP_ENCRYPTION_KEY"
+    "API_JWT_KEY"
+)
+
+# Função: sincroniza uma variável no .env
+sync_env_var() {
+    local var_name="$1"
+    local value="${!var_name:-}"
+    
+    if [ -z "$value" ]; then
+        return 0
+    fi
+    
+    # Verifica se é variável imutável e já existe no .env
+    for immutable in "${IMMUTABLE_VARS[@]}"; do
+        if [ "$var_name" = "$immutable" ] && grep -q "^${var_name}=" "$ENV_FILE" 2>/dev/null; then
+            echo "  [SKIP] $var_name (imutável, já definida)"
+            return 0
+        fi
+    done
+    
+    # Substitui ou adiciona a variável
+    if grep -q "^${var_name}=" "$ENV_FILE" 2>/dev/null; then
+        sed -i "s|^${var_name}=.*|${var_name}=${value}|" "$ENV_FILE"
+        echo "  [UPDATE] $var_name"
+    else
+        echo "${var_name}=${value}" >> "$ENV_FILE"
+        echo "  [ADD] $var_name"
+    fi
+}
+
+# Primeira execução: cria .env do .env.example
 if [ ! -f "$ENV_FILE" ] && [ -f "$EXAMPLE_FILE" ]; then
     echo "Gerando .env a partir de .env.example..."
     cp "$EXAMPLE_FILE" "$ENV_FILE"
-
+    
     # Substituir placeholders pelas variáveis de ambiente do container
     sed -i "s|enter_db_hostname|${DB_HOSTNAME:-mysql}|g" "$ENV_FILE"
     sed -i "s|enter_db_username|${DB_USERNAME:-mapos}|g" "$ENV_FILE"
     sed -i "s|enter_db_password|${DB_PASSWORD:-mapos}|g" "$ENV_FILE"
     sed -i "s|enter_db_name|${DB_DATABASE:-mapos}|g" "$ENV_FILE"
     sed -i "s|enter_baseurl|${APP_BASEURL:-http://localhost:8000/}|g" "$ENV_FILE"
-
-    # Gerar chaves aleatórias
+    
+    # Gerar chaves aleatórias (apenas na primeira vez)
     ENCRYPTION_KEY=$(openssl rand -base64 32)
     sed -i "s|enter_encryption_key|${ENCRYPTION_KEY}|g" "$ENV_FILE"
-
+    
     JWT_KEY=$(openssl rand -base64 32)
     sed -i "s|enter_jwt_key|${JWT_KEY}|g" "$ENV_FILE"
-
+    
     sed -i "s|enter_token_expire_time|${API_TOKEN_EXPIRE_TIME:-3600}|g" "$ENV_FILE"
     sed -i "s|enter_api_enabled|${API_ENABLED:-false}|g" "$ENV_FILE"
-
+    
     # Mudar ambiente para production
     sed -i "s|pre_installation|production|g" "$ENV_FILE"
-
+    
     # Fix permissions on generated .env
     chown www-data:www-data "$ENV_FILE"
     chmod 664 "$ENV_FILE"
-
+    
     echo ".env gerado com sucesso."
 fi
+
+# SEMPRE sincroniza variáveis configuráveis (mesmo se .env já existia)
+echo "Sincronizando variáveis de ambiente..."
+for var in "${SYNC_VARS[@]}"; do
+    sync_env_var "$var"
+done
+
+# Garante que chaves imutáveis existam (caso .env tenha sido criado manualmente sem elas)
+for var in "${IMMUTABLE_VARS[@]}"; do
+    if ! grep -q "^${var}=" "$ENV_FILE" 2>/dev/null; then
+        if [ "$var" = "APP_ENCRYPTION_KEY" ]; then
+            ENCRYPTION_KEY=$(openssl rand -base64 32)
+            echo "${var}=${ENCRYPTION_KEY}" >> "$ENV_FILE"
+            echo "  [GEN] $var"
+        elif [ "$var" = "API_JWT_KEY" ]; then
+            JWT_KEY=$(openssl rand -base64 32)
+            echo "${var}=${JWT_KEY}" >> "$ENV_FILE"
+            echo "  [GEN] $var"
+        fi
+    fi
+done
+
+# Fix permissions on .env
+chown www-data:www-data "$ENV_FILE"
+chmod 664 "$ENV_FILE"
 
 # Wait for MySQL to be ready and run banco.sql if database is empty
 echo "Aguardando MySQL..."
