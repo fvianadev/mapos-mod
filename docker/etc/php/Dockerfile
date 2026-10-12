@@ -58,8 +58,8 @@ RUN apt update && apt upgrade -y \
 # Permission for PHP to write in volumes
 RUN usermod -u 1000 www-data
 
-# Install supervisor and cron
-RUN apt update && apt install supervisor cron -y
+# Install supervisor, cron, and mysql client
+RUN apt update && apt install supervisor cron default-mysql-client -y
 
 # Setup cron jobs
 RUN touch /var/log/cron.log
