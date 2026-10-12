@@ -170,7 +170,7 @@ jobs:
           envs: IMAGE_TAG,REGISTRY,IMAGE_NAME
           script: |
             set -e
-            cd /opt/docker/parata_app
+            cd /opt/docker/mapos
             
             # Determina tag da image
             if [ -n "${{ github.event.inputs.environment }}" ]; then
