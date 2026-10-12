@@ -77,4 +77,17 @@ RUN mkdir -p /var/log/supervisor
 # Supervisor config file
 COPY ./supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Entrypoint script
+COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Fix permissions for www-data on application and assets (build time)
+RUN mkdir -p /var/www/html/assets/uploads /var/www/html/assets/userImage \
+    && chown -R www-data:www-data /var/www/html/application \
+    && chmod -R 775 /var/www/html/application \
+    && find /var/www/html/application -type f -exec chmod 664 {} \; \
+    && chown -R www-data:www-data /var/www/html/assets/uploads /var/www/html/assets/userImage \
+    && chmod -R 775 /var/www/html/assets/uploads /var/www/html/assets/userImage
+
+ENTRYPOINT ["entrypoint.sh"]
 CMD ["/usr/bin/supervisord"]
