@@ -60,9 +60,27 @@ echo "MySQL pronto."
 DB_EXISTS=$(mysql -h"${DB_HOSTNAME:-mysql}" -u"${DB_USERNAME:-mapos}" -p"${DB_PASSWORD:-mapos}" "${DB_DATABASE:-mapos}" -e "SHOW TABLES LIKE 'usuarios';" 2>/dev/null | grep -c usuarios || true)
 
 if [ "$DB_EXISTS" -eq 0 ]; then
-    echo "Banco vazio detectado. Executando banco.sql..."
-    mysql -h"${DB_HOSTNAME:-mysql}" -u"${DB_USERNAME:-mapos}" -p"${DB_PASSWORD:-mapos}" "${DB_DATABASE:-mapos}" < /var/www/html/banco.sql
-    echo "Schema inicial criado."
+    echo "Banco vazio detectado. Preparando banco.sql com dados do admin..."
+
+    # Admin config (use env vars or defaults)
+    ADMIN_NAME="${ADMIN_NAME:-Administrador}"
+    ADMIN_EMAIL="${ADMIN_EMAIL:-admin@mapos.local}"
+    ADMIN_PASSWORD="${ADMIN_PASSWORD:-mapos123}"
+    ADMIN_CREATED_AT=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # Generate password hash using PHP
+    ADMIN_PASSWORD_HASH=$(php -r "echo password_hash('$ADMIN_PASSWORD', PASSWORD_DEFAULT);")
+
+    # Copy banco.sql and replace placeholders
+    cp /var/www/html/banco.sql /tmp/banco_custom.sql
+    sed -i "s|admin_name|${ADMIN_NAME}|g" /tmp/banco_custom.sql
+    sed -i "s|admin_email|${ADMIN_EMAIL}|g" /tmp/banco_custom.sql
+    sed -i "s|admin_password|${ADMIN_PASSWORD_HASH}|g" /tmp/banco_custom.sql
+    sed -i "s|admin_created_at|${ADMIN_CREATED_AT}|g" /tmp/banco_custom.sql
+
+    echo "Executando banco.sql personalizado..."
+    mysql -h"${DB_HOSTNAME:-mysql}" -u"${DB_USERNAME:-mapos}" -p"${DB_PASSWORD:-mapos}" "${DB_DATABASE:-mapos}" < /tmp/banco_custom.sql
+    echo "Schema inicial criado com admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}"
 else
     echo "Banco já possui tabelas. Pulando banco.sql."
 fi
